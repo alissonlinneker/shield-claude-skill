@@ -1,6 +1,6 @@
 ---
 name: shield
-description: "Orchestrates security scanning and autonomous penetration testing. Runs Shannon pentester with Semgrep SAST, gitleaks secrets scanning, and dependency audits. Consolidates findings, proposes code fixes with diffs, calculates risk scores, and creates GitHub issues. Invoke with /shield."
+description: "Orchestrates security scanning and autonomous penetration testing. Runs Shannon pentester with Semgrep SAST, gitleaks secrets scanning, and dependency audits. Consolidates findings, proposes code fixes with diffs, calculates risk scores, and creates GitHub issues. Invoke with /shield:shield (plugin) or /shield (standalone)."
 ---
 
 # Shield — Security Orchestrator
@@ -11,18 +11,18 @@ description: "Orchestrates security scanning and autonomous penetration testing.
 - User says "check for secrets", "find security issues", "scan dependencies"
 - Before production deployments
 - After adding new dependencies or authentication flows
-- User invokes `/shield`
+- User invokes `/shield:shield` (or `/shield` if installed standalone)
 
 ## Modes
 
 | Mode | Trigger | What Runs |
 |------|---------|-----------|
-| **full** | `/shield full` or `/shield URL=https://app.com` | Shannon pentest + all complementary tools |
-| **quick** | `/shield` or `/shield quick` | Semgrep + gitleaks + package audit + dependency freshness |
-| **fix** | `/shield fix` | Re-analyze existing report and propose fixes |
-| **verify** | `/shield verify` | Re-scan to confirm fixes resolved findings |
-| **score** | `/shield score` | Calculate and display security scorecard only |
-| **outdated** | `/shield outdated` | Check for outdated dependencies (major/minor/patch behind) |
+| **full** | `/shield:shield full` or `/shield:shield URL=https://app.com` | Shannon pentest + all complementary tools |
+| **quick** | `/shield:shield` or `/shield:shield quick` | Semgrep + gitleaks + package audit + dependency freshness |
+| **fix** | `/shield:shield fix` | Re-analyze existing report and propose fixes |
+| **verify** | `/shield:shield verify` | Re-scan to confirm fixes resolved findings |
+| **score** | `/shield:shield score` | Calculate and display security scorecard only |
+| **outdated** | `/shield:shield outdated` | Check for outdated dependencies (major/minor/patch behind) |
 
 ## Execution Protocol
 

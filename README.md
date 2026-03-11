@@ -191,12 +191,12 @@ All dependencies are up to date.
 
 | Mode | Command | Description |
 |------|---------|-------------|
-| **Full** | `/shield full` | Complete assessment -- Shannon pentest + SAST + secrets + SCA + freshness + scorecard |
-| **Quick** | `/shield quick` | Fast scan -- SAST + secrets + dependency audit + freshness (no pentest) |
-| **Fix** | `/shield fix` | Auto-remediation -- analyzes findings and generates ready-to-apply diffs |
-| **Verify** | `/shield verify` | Re-scan after fixes -- confirms issues are resolved, compares against baseline |
-| **Score** | `/shield score` | Scorecard only -- calculates risk score from last scan or fresh data |
-| **Outdated** | `/shield outdated` | Dependency freshness check -- lists all outdated packages by severity tier |
+| **Full** | `/shield:shield full` | Complete assessment -- Shannon pentest + SAST + secrets + SCA + freshness + scorecard |
+| **Quick** | `/shield:shield quick` | Fast scan -- SAST + secrets + dependency audit + freshness (no pentest) |
+| **Fix** | `/shield:shield fix` | Auto-remediation -- analyzes findings and generates ready-to-apply diffs |
+| **Verify** | `/shield:shield verify` | Re-scan after fixes -- confirms issues are resolved, compares against baseline |
+| **Score** | `/shield:shield score` | Scorecard only -- calculates risk score from last scan or fresh data |
+| **Outdated** | `/shield:shield outdated` | Dependency freshness check -- lists all outdated packages by severity tier |
 
 ## Prerequisites
 
@@ -274,7 +274,7 @@ After installation, the skill is available as `/shield:shield` in any project. R
 ### Full Security Assessment
 
 ```
-/shield full
+/shield:shield full
 ```
 
 Runs all available scanners including Shannon pentest (requires Docker and a target URL), generates a scorecard, and produces a comprehensive markdown report with fix proposals.
@@ -282,7 +282,7 @@ Runs all available scanners including Shannon pentest (requires Docker and a tar
 ### Quick Scan
 
 ```
-/shield quick
+/shield:shield quick
 ```
 
 Runs SAST, secrets scanning, dependency audit, and freshness check. Skips penetration testing for speed. Best for development workflow integration.
@@ -290,7 +290,7 @@ Runs SAST, secrets scanning, dependency audit, and freshness check. Skips penetr
 ### Auto-Remediation
 
 ```
-/shield fix
+/shield:shield fix
 ```
 
 Analyzes existing findings and generates before/after diffs for each vulnerability. You approve which fixes to apply, one by one or by severity tier.
@@ -298,7 +298,7 @@ Analyzes existing findings and generates before/after diffs for each vulnerabili
 ### Verify Fixes
 
 ```
-/shield verify
+/shield:shield verify
 ```
 
 Re-runs all scanners and compares against the previous baseline. Shows new issues, resolved issues, persistent issues, and score delta.
@@ -306,7 +306,7 @@ Re-runs all scanners and compares against the previous baseline. Shows new issue
 ### Scorecard Only
 
 ```
-/shield score
+/shield:shield score
 ```
 
 Calculates the security risk score (0-100) from available scan data. Fast way to check posture without running a full scan.
@@ -314,10 +314,12 @@ Calculates the security risk score (0-100) from available scan data. Fast way to
 ### Dependency Freshness
 
 ```
-/shield outdated
+/shield:shield outdated
 ```
 
 Checks all installed packages against their latest published versions. Reports MAJOR, MINOR, and PATCH version gaps.
+
+> **Note:** When installed as a standalone skill (not via plugin), use `/shield` instead of `/shield:shield`. The `:shield` namespace is only needed for plugin installations.
 
 ## Configuration
 
