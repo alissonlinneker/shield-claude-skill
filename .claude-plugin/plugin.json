@@ -2,7 +2,9 @@
   "name": "shield",
   "version": "0.1.0",
   "description": "Security orchestrator — autonomous pentests, SAST, secrets scanning, dependency audits, and outdated checks from your code editor CLI. Wraps Shannon pentester with Semgrep, gitleaks, and package audit tools into a unified security workflow with risk scoring and fix proposals.",
-  "author": "ALASTecnology",
+  "author": {
+    "name": "ALASTecnology"
+  },
   "license": "MIT",
   "repository": "https://github.com/alissonlinneker/shield-claude-skill",
   "homepage": "https://github.com/alissonlinneker/shield-claude-skill",
