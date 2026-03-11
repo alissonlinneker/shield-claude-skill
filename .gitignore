@@ -1,0 +1,27 @@
+# Claude Code
+.memory-bank/
+.mcp.json
+.claude-logs/
+
+# Dependencies
+node_modules/
+
+# Reports (may contain sensitive data)
+reports/
+
+# Shannon workspace
+shannon/
+repos/
+audit-logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.*

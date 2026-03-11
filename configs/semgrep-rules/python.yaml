@@ -1,0 +1,302 @@
+rules:
+  # ---------------------------------------------------------------------------
+  # SQL Injection
+  # ---------------------------------------------------------------------------
+  - id: py-sql-injection-format
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $CURSOR.execute("..." % $INPUT, ...)
+          - pattern: |
+              $CURSOR.execute("...".format($INPUT), ...)
+          - pattern: |
+              $CURSOR.execute("..." + $INPUT + "...", ...)
+          - pattern: |
+              $CURSOR.execute(f"...{$INPUT}...", ...)
+    message: >
+      SQL query built using string formatting or concatenation.
+      Use parameterized queries with placeholder bindings to prevent
+      SQL injection.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  - id: py-sql-injection-raw-orm
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $DB.execute(f"...{$INPUT}...")
+          - pattern: |
+              $DB.execute("...".format($INPUT))
+          - pattern: |
+              $ENGINE.execute(f"...{$INPUT}...")
+          - pattern: |
+              $CONN.execute(f"...{$INPUT}...")
+    message: >
+      Raw SQL query executed with interpolated user input via ORM connection.
+      Use the ORM's parameterized query API or text() with bound parameters.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Command Injection
+  # ---------------------------------------------------------------------------
+  - id: py-command-injection-os-system
+    patterns:
+      - pattern-either:
+          - pattern: |
+              os.system($CMD)
+          - pattern: |
+              os.popen($CMD)
+      - pattern-not: |
+          os.system("...")
+      - pattern-not: |
+          os.popen("...")
+    message: >
+      os.system() and os.popen() execute commands through the shell and are
+      vulnerable to injection. Use subprocess.run() with a list of arguments
+      and shell=False.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  - id: py-command-injection-subprocess-shell
+    patterns:
+      - pattern-either:
+          - pattern: |
+              subprocess.call($CMD, shell=True, ...)
+          - pattern: |
+              subprocess.run($CMD, shell=True, ...)
+          - pattern: |
+              subprocess.Popen($CMD, shell=True, ...)
+      - pattern-not: |
+          subprocess.call("...", shell=True, ...)
+      - pattern-not: |
+          subprocess.run("...", shell=True, ...)
+      - pattern-not: |
+          subprocess.Popen("...", shell=True, ...)
+    message: >
+      subprocess with shell=True and dynamic input allows command injection.
+      Pass arguments as a list and remove shell=True.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # SSRF
+  # ---------------------------------------------------------------------------
+  - id: py-ssrf-requests
+    patterns:
+      - pattern-either:
+          - pattern: |
+              requests.get($URL, ...)
+          - pattern: |
+              requests.post($URL, ...)
+          - pattern: |
+              requests.put($URL, ...)
+          - pattern: |
+              requests.delete($URL, ...)
+          - pattern: |
+              requests.head($URL, ...)
+          - pattern: |
+              httpx.get($URL, ...)
+          - pattern: |
+              httpx.post($URL, ...)
+      - metavariable-pattern:
+          metavariable: $URL
+          patterns:
+            - pattern-not: "..."
+    message: >
+      HTTP request with a potentially user-controlled URL may lead to SSRF.
+      Validate the URL against an allowlist and block internal/private
+      IP ranges before making the request.
+    severity: WARNING
+    languages: [python]
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021 SSRF"
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Insecure Deserialization
+  # ---------------------------------------------------------------------------
+  - id: py-deserialization-pickle
+    patterns:
+      - pattern-either:
+          - pattern: |
+              pickle.loads($DATA)
+          - pattern: |
+              pickle.load($FILE)
+          - pattern: |
+              cPickle.loads($DATA)
+          - pattern: |
+              cPickle.load($FILE)
+    message: >
+      Deserializing data with pickle can execute arbitrary code.
+      Never unpickle data from untrusted sources. Use JSON or other
+      safe serialization formats.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      cwe: "CWE-502"
+      owasp: "A08:2021 Software and Data Integrity Failures"
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  - id: py-deserialization-yaml-unsafe
+    patterns:
+      - pattern: |
+          yaml.load($DATA)
+      - pattern-not: |
+          yaml.load($DATA, Loader=yaml.SafeLoader)
+      - pattern-not: |
+          yaml.load($DATA, Loader=yaml.CSafeLoader)
+    message: >
+      yaml.load() without SafeLoader can execute arbitrary Python objects.
+      Always use yaml.safe_load() or pass Loader=yaml.SafeLoader.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      cwe: "CWE-502"
+      owasp: "A08:2021 Software and Data Integrity Failures"
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Path Traversal
+  # ---------------------------------------------------------------------------
+  - id: py-path-traversal
+    patterns:
+      - pattern-either:
+          - pattern: |
+              open($PATH, ...)
+          - pattern: |
+              pathlib.Path($PATH).read_text(...)
+          - pattern: |
+              pathlib.Path($PATH).read_bytes(...)
+      - metavariable-pattern:
+          metavariable: $PATH
+          patterns:
+            - pattern-not: "..."
+    message: >
+      File opened with a potentially user-controlled path. Resolve the
+      path to its canonical form and verify it resides within the
+      intended base directory before opening.
+    severity: WARNING
+    languages: [python]
+    metadata:
+      cwe: "CWE-22"
+      owasp: "A01:2021 Broken Access Control"
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Hardcoded Secrets
+  # ---------------------------------------------------------------------------
+  - id: py-hardcoded-password
+    patterns:
+      - pattern-either:
+          - pattern: |
+              password = "..."
+          - pattern: |
+              PASSWORD = "..."
+          - pattern: |
+              passwd = "..."
+          - pattern: |
+              secret = "..."
+          - pattern: |
+              SECRET = "..."
+          - pattern: |
+              api_key = "..."
+          - pattern: |
+              API_KEY = "..."
+          - pattern: |
+              secret_key = "..."
+          - pattern: |
+              SECRET_KEY = "..."
+    message: >
+      Hardcoded credential detected. Store secrets in environment variables,
+      a secrets manager, or encrypted configuration files — never in source code.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      cwe: "CWE-798"
+      owasp: "A07:2021 Identification and Authentication Failures"
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Jinja2 Template Injection
+  # ---------------------------------------------------------------------------
+  - id: py-jinja2-template-injection
+    patterns:
+      - pattern-either:
+          - pattern: |
+              jinja2.Template($INPUT).render(...)
+          - pattern: |
+              Template($INPUT).render(...)
+          - pattern: |
+              jinja2.from_string($INPUT)
+      - metavariable-pattern:
+          metavariable: $INPUT
+          patterns:
+            - pattern-not: "..."
+    message: >
+      Creating a Jinja2 template from user-controlled input enables server-side
+      template injection (SSTI). Use pre-defined template files and pass
+      user data only as template variables.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      cwe: "CWE-1336"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  - id: py-jinja2-autoescape-disabled
+    patterns:
+      - pattern-either:
+          - pattern: |
+              jinja2.Environment(..., autoescape=False, ...)
+          - pattern: |
+              Environment(..., autoescape=False, ...)
+    message: >
+      Jinja2 autoescape is disabled. This allows XSS when rendering
+      user-supplied data. Set autoescape=True or use
+      select_autoescape().
+    severity: WARNING
+    languages: [python]
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+      impact: HIGH
+      category: security

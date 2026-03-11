@@ -1,0 +1,293 @@
+rules:
+  # ---------------------------------------------------------------------------
+  # SQL Injection
+  # ---------------------------------------------------------------------------
+  - id: php-sql-injection-mysql-query
+    patterns:
+      - pattern-either:
+          - pattern: |
+              mysql_query("..." . $INPUT . "...")
+          - pattern: |
+              mysqli_query($CONN, "..." . $INPUT . "...")
+          - pattern: |
+              $CONN->query("..." . $INPUT . "...")
+          - pattern: |
+              $PDO->query("..." . $INPUT . "...")
+    message: >
+      SQL query built with string concatenation. Use prepared statements
+      with bound parameters (PDO::prepare or mysqli::prepare).
+    severity: ERROR
+    languages: [php]
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  - id: php-sql-injection-superglobals
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $CONN->query("..." . $_GET[$KEY] . "...")
+          - pattern: |
+              $CONN->query("..." . $_POST[$KEY] . "...")
+          - pattern: |
+              $CONN->query("..." . $_REQUEST[$KEY] . "...")
+          - pattern: |
+              mysqli_query($CONN, "..." . $_GET[$KEY] . "...")
+          - pattern: |
+              mysqli_query($CONN, "..." . $_POST[$KEY] . "...")
+    message: >
+      Superglobal ($_GET/$_POST/$_REQUEST) injected directly into SQL query.
+      This is a critical SQL injection vulnerability. Use prepared statements.
+    severity: ERROR
+    languages: [php]
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # XSS — Cross-Site Scripting
+  # ---------------------------------------------------------------------------
+  - id: php-xss-echo-get-post
+    patterns:
+      - pattern-either:
+          - pattern: |
+              echo $_GET[$KEY];
+          - pattern: |
+              echo $_POST[$KEY];
+          - pattern: |
+              echo $_REQUEST[$KEY];
+          - pattern: |
+              print $_GET[$KEY];
+          - pattern: |
+              print $_POST[$KEY];
+          - pattern: |
+              print $_REQUEST[$KEY];
+    message: >
+      User input from superglobals echoed directly to the page without
+      encoding. Use htmlspecialchars($input, ENT_QUOTES, 'UTF-8') to
+      prevent cross-site scripting.
+    severity: ERROR
+    languages: [php]
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+      impact: HIGH
+      category: security
+
+  - id: php-xss-echo-dynamic
+    patterns:
+      - pattern-either:
+          - pattern: |
+              echo $INPUT;
+          - pattern: |
+              print $INPUT;
+      - pattern-not: |
+          echo "...";
+      - pattern-not: |
+          print "...";
+      - pattern-not: |
+          echo htmlspecialchars(...);
+    message: >
+      Dynamic variable echoed without HTML encoding. If this contains
+      user input, it may lead to XSS. Apply htmlspecialchars() or
+      use a templating engine with automatic escaping.
+    severity: WARNING
+    languages: [php]
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 Injection"
+      confidence: LOW
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Command Injection
+  # ---------------------------------------------------------------------------
+  - id: php-command-injection
+    patterns:
+      - pattern-either:
+          - pattern: |
+              exec($INPUT, ...)
+          - pattern: |
+              system($INPUT)
+          - pattern: |
+              passthru($INPUT)
+          - pattern: |
+              shell_exec($INPUT)
+          - pattern: |
+              popen($INPUT, ...)
+          - pattern: |
+              proc_open($INPUT, ...)
+      - pattern-not: |
+          exec("...", ...)
+      - pattern-not: |
+          system("...")
+      - pattern-not: |
+          passthru("...")
+      - pattern-not: |
+          shell_exec("...")
+    message: >
+      Shell command executed with dynamic input. Use escapeshellarg()
+      and escapeshellcmd() on all user-supplied values, or avoid shell
+      execution entirely.
+    severity: ERROR
+    languages: [php]
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  - id: php-command-injection-backtick
+    patterns:
+      - pattern: |
+          `... $INPUT ...`
+    message: >
+      Backtick operator with dynamic input executes shell commands.
+      Replace with a safer alternative or sanitize with escapeshellarg().
+    severity: ERROR
+    languages: [php]
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021 Injection"
+      confidence: MEDIUM
+      impact: CRITICAL
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # File Inclusion (LFI / RFI)
+  # ---------------------------------------------------------------------------
+  - id: php-file-inclusion
+    patterns:
+      - pattern-either:
+          - pattern: |
+              include($INPUT)
+          - pattern: |
+              include_once($INPUT)
+          - pattern: |
+              require($INPUT)
+          - pattern: |
+              require_once($INPUT)
+      - pattern-not: |
+          include("...")
+      - pattern-not: |
+          include_once("...")
+      - pattern-not: |
+          require("...")
+      - pattern-not: |
+          require_once("...")
+    message: >
+      Dynamic file inclusion with user-controlled input enables Local/Remote
+      File Inclusion (LFI/RFI). Use a whitelist of allowed files or map
+      user input to predefined constants.
+    severity: ERROR
+    languages: [php]
+    metadata:
+      cwe: "CWE-98"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  - id: php-file-inclusion-superglobals
+    patterns:
+      - pattern-either:
+          - pattern: |
+              include($_GET[$KEY])
+          - pattern: |
+              include($_POST[$KEY])
+          - pattern: |
+              include($_REQUEST[$KEY])
+          - pattern: |
+              require($_GET[$KEY])
+          - pattern: |
+              require($_POST[$KEY])
+    message: >
+      File inclusion directly from superglobal input. This is a critical
+      LFI/RFI vulnerability that can lead to remote code execution.
+    severity: ERROR
+    languages: [php]
+    metadata:
+      cwe: "CWE-98"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Insecure Deserialization
+  # ---------------------------------------------------------------------------
+  - id: php-unserialize
+    patterns:
+      - pattern: |
+          unserialize($INPUT)
+      - pattern-not: |
+          unserialize("...")
+    message: >
+      unserialize() with untrusted data can lead to object injection and
+      remote code execution. Use json_decode() for data interchange or
+      restrict allowed classes with the second parameter.
+    severity: ERROR
+    languages: [php]
+    metadata:
+      cwe: "CWE-502"
+      owasp: "A08:2021 Software and Data Integrity Failures"
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # SSRF
+  # ---------------------------------------------------------------------------
+  - id: php-ssrf-file-get-contents
+    patterns:
+      - pattern-either:
+          - pattern: |
+              file_get_contents($URL)
+          - pattern: |
+              fopen($URL, ...)
+      - metavariable-pattern:
+          metavariable: $URL
+          patterns:
+            - pattern-not: "..."
+    message: >
+      file_get_contents() or fopen() with a user-controlled URL may
+      enable SSRF. Validate URLs against an allowlist and block requests
+      to internal/private IP ranges.
+    severity: WARNING
+    languages: [php]
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021 SSRF"
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  - id: php-ssrf-curl
+    patterns:
+      - pattern: |
+          curl_setopt($CH, CURLOPT_URL, $URL)
+      - metavariable-pattern:
+          metavariable: $URL
+          patterns:
+            - pattern-not: "..."
+    message: >
+      cURL request URL set from potentially user-controlled input.
+      Validate the URL scheme and hostname against an allowlist to
+      prevent server-side request forgery.
+    severity: WARNING
+    languages: [php]
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021 SSRF"
+      confidence: MEDIUM
+      impact: HIGH
+      category: security

@@ -1,0 +1,83 @@
+# Shannon configuration for API-only applications
+# No browser login — authentication via Bearer token
+# Replace placeholder values with actual application details before use
+
+authentication:
+  login_type: token
+  token_type: Bearer
+  token_value: "{{AUTH_TOKEN}}"
+  token_header: "Authorization"
+  token_refresh:
+    enabled: false
+    # Uncomment and configure if the API uses token refresh
+    # enabled: true
+    # refresh_url: "{{URL}}/auth/refresh"
+    # refresh_method: POST
+    # refresh_body:
+    #   refresh_token: "{{REFRESH_TOKEN}}"
+    # token_path: "$.access_token"
+
+api:
+  base_url: "{{URL}}/api"
+  version_prefix: "/v1"
+  content_type: "application/json"
+  common_headers:
+    Accept: "application/json"
+    User-Agent: "SecurityScanner/1.0"
+
+rules:
+  - type: method
+    action: avoid
+    value: "DELETE"
+    description: "Skip destructive DELETE operations unless explicitly targeting them"
+  - type: path
+    action: avoid
+    value: "/api/*/admin"
+    description: "Avoid admin-only API endpoints that could alter system state"
+  - type: path
+    action: avoid
+    value: "/api/auth/logout"
+    description: "Do not invalidate the test token"
+  - type: response_code
+    action: flag
+    value: "500"
+    description: "Flag server errors as potential vulnerabilities"
+
+pipeline:
+  max_concurrent_pipelines: 5
+
+scanning:
+  scope:
+    include:
+      - "{{URL}}/api/*"
+    exclude:
+      - "{{URL}}/api/health"
+      - "{{URL}}/api/metrics"
+      - "{{URL}}/api/docs/*"
+  max_depth: 5
+  request_delay_ms: 100
+  follow_redirects: false
+
+test_vectors:
+  injection:
+    - "' OR 1=1 --"
+    - "\" OR \"\"=\""
+    - "1; DROP TABLE users--"
+    - "${7*7}"
+    - "{{7*7}}"
+  path_traversal:
+    - "../../../etc/passwd"
+    - "..\\..\\..\\windows\\system32\\config\\sam"
+  xss:
+    - "<script>alert(1)</script>"
+    - "javascript:alert(1)"
+  ssrf:
+    - "http://127.0.0.1"
+    - "http://169.254.169.254/latest/meta-data/"
+    - "http://[::1]"
+
+reporting:
+  output_dir: "./audit-logs"
+  format: json
+  include_request_response: true
+  include_network_logs: true

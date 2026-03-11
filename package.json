@@ -1,0 +1,38 @@
+{
+  "name": "@alastecnology/shield",
+  "version": "0.1.0",
+  "description": "Security orchestrator skill — autonomous pentests, SAST, secrets scanning, and dependency audits from your code editor CLI",
+  "main": "SKILL.md",
+  "scripts": {
+    "test": "bash tests/run-tests.sh",
+    "lint": "shellcheck scripts/*.sh",
+    "install-deps": "bash install.sh"
+  },
+  "keywords": [
+    "security",
+    "pentest",
+    "sast",
+    "sca",
+    "secrets",
+    "vulnerability",
+    "scanner",
+    "semgrep",
+    "gitleaks",
+    "shannon",
+    "owasp",
+    "cwe",
+    "compliance",
+    "sarif",
+    "skill"
+  ],
+  "author": "ALASTecnology",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alissonlinneker/shield-claude-skill"
+  },
+  "homepage": "https://github.com/alissonlinneker/shield-claude-skill",
+  "bugs": {
+    "url": "https://github.com/alissonlinneker/shield-claude-skill/issues"
+  }
+}

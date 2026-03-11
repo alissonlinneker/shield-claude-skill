@@ -1,0 +1,20 @@
+{
+  "vulnerabilities": {
+    "lodash": {
+      "name": "lodash",
+      "severity": "high",
+      "via": [{"title": "Prototype Pollution", "url": "https://github.com/advisories/GHSA-xxxx", "severity": "high"}],
+      "range": "<4.17.21",
+      "fixAvailable": true
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "total": 1,
+      "critical": 0,
+      "high": 1,
+      "moderate": 0,
+      "low": 0
+    }
+  }
+}

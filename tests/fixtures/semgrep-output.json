@@ -1,0 +1,32 @@
+{
+  "results": [
+    {
+      "check_id": "javascript.lang.security.audit.sqli",
+      "path": "src/db/users.js",
+      "start": {"line": 23, "col": 5},
+      "end": {"line": 23, "col": 60},
+      "extra": {
+        "message": "SQL injection vulnerability",
+        "severity": "ERROR",
+        "metadata": {
+          "cwe": ["CWE-89"],
+          "owasp": ["A03:2021"]
+        }
+      }
+    },
+    {
+      "check_id": "javascript.lang.security.audit.xss",
+      "path": "src/views/profile.js",
+      "start": {"line": 15, "col": 3},
+      "end": {"line": 15, "col": 45},
+      "extra": {
+        "message": "Cross-site scripting vulnerability",
+        "severity": "WARNING",
+        "metadata": {
+          "cwe": ["CWE-79"],
+          "owasp": ["A03:2021"]
+        }
+      }
+    }
+  ]
+}

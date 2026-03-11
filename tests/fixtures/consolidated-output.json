@@ -1,0 +1,89 @@
+{
+  "findings": [
+    {
+      "id": "SHIELD-001",
+      "severity": "CRITICAL",
+      "title": "SQL Injection in UserRepository",
+      "cwe": "CWE-89",
+      "owasp": "A03:2021",
+      "source_tool": "semgrep",
+      "file": "src/db/users.js",
+      "line": 23,
+      "evidence": "db.query('SELECT * FROM users WHERE id = ' + req.params.id)",
+      "status": "confirmed"
+    },
+    {
+      "id": "SHIELD-002",
+      "severity": "CRITICAL",
+      "title": "Hardcoded AWS Access Key",
+      "cwe": "CWE-798",
+      "owasp": "A07:2021",
+      "source_tool": "gitleaks",
+      "file": "src/config/aws.js",
+      "line": 5,
+      "evidence": "aws_access_key_id = \"AKIA...\"",
+      "status": "confirmed"
+    },
+    {
+      "id": "SHIELD-003",
+      "severity": "HIGH",
+      "title": "Prototype Pollution in lodash",
+      "cwe": "CWE-1321",
+      "owasp": "A06:2021",
+      "source_tool": "npm-audit",
+      "file": "package.json",
+      "line": 0,
+      "evidence": "lodash < 4.17.21",
+      "status": "confirmed"
+    },
+    {
+      "id": "SHIELD-004",
+      "severity": "HIGH",
+      "title": "Cross-Site Scripting in Profile View",
+      "cwe": "CWE-79",
+      "owasp": "A03:2021",
+      "source_tool": "semgrep",
+      "file": "src/views/profile.js",
+      "line": 15,
+      "evidence": "document.innerHTML = userInput",
+      "status": "confirmed"
+    },
+    {
+      "id": "SHIELD-005",
+      "severity": "MEDIUM",
+      "title": "Missing Content-Security-Policy Header",
+      "cwe": "CWE-16",
+      "owasp": "A05:2021",
+      "source_tool": "semgrep",
+      "file": "src/middleware/headers.js",
+      "line": 8,
+      "evidence": "No CSP header configured",
+      "status": "confirmed"
+    },
+    {
+      "id": "SHIELD-006",
+      "severity": "LOW",
+      "title": "Console.log Statement in Production Code",
+      "cwe": "CWE-532",
+      "owasp": "A09:2021",
+      "source_tool": "semgrep",
+      "file": "src/auth/login.js",
+      "line": 42,
+      "evidence": "console.log(userData)",
+      "status": "confirmed"
+    }
+  ],
+  "summary": {
+    "total": 6,
+    "critical": 2,
+    "high": 2,
+    "medium": 1,
+    "low": 1
+  },
+  "metadata": {
+    "scan_date": "2026-03-11",
+    "mode": "quick",
+    "tools_used": ["semgrep", "gitleaks", "npm-audit"],
+    "tools_skipped": ["shannon"]
+  }
+}

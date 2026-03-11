@@ -1,0 +1,55 @@
+# Shannon configuration for standard web applications
+# Replace placeholder values with actual application details before use
+
+authentication:
+  login_type: form
+  login_url: "{{URL}}/login"
+  credentials:
+    username: "{{AUTH_USERNAME}}"
+    password: "{{AUTH_PASSWORD}}"
+  login_flow:
+    - "Navigate to the login page"
+    - "Type $username into the email or username field"
+    - "Type $password into the password field"
+    - "Click the submit or sign-in button"
+  success_condition:
+    type: url_contains
+    value: "/dashboard"
+
+rules:
+  - type: path
+    action: avoid
+    value: "/logout"
+    description: "Do not trigger logout during testing"
+  - type: path
+    action: avoid
+    value: "/admin/delete"
+    description: "Avoid destructive admin operations"
+  - type: path
+    action: avoid
+    value: "/account/deactivate"
+    description: "Do not deactivate user accounts during testing"
+  - type: path
+    action: avoid
+    value: "/settings/billing"
+    description: "Stay away from billing and payment operations"
+
+pipeline:
+  max_concurrent_pipelines: 3
+
+scanning:
+  scope:
+    include:
+      - "{{URL}}/*"
+    exclude:
+      - "{{URL}}/static/*"
+      - "{{URL}}/assets/*"
+      - "{{URL}}/fonts/*"
+  max_depth: 10
+  request_delay_ms: 200
+
+reporting:
+  output_dir: "./audit-logs"
+  format: json
+  include_screenshots: true
+  include_network_logs: true

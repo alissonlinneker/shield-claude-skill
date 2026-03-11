@@ -1,0 +1,106 @@
+# Shannon configuration for SPA + API applications
+# Handles JavaScript-rendered login forms and client-side routing
+# Replace placeholder values with actual application details before use
+
+authentication:
+  login_type: spa
+  login_url: "{{URL}}/login"
+  credentials:
+    username: "{{AUTH_USERNAME}}"
+    password: "{{AUTH_PASSWORD}}"
+  login_flow:
+    - "Navigate to the login page and wait for JavaScript to render"
+    - "Wait for the login form to be visible in the DOM"
+    - "Type $username into the email or username input field"
+    - "Type $password into the password input field"
+    - "Click the submit or sign-in button"
+    - "Wait for navigation to complete and dashboard to render"
+  success_condition:
+    type: element_visible
+    selector: "[data-testid='dashboard'], .dashboard, #dashboard"
+  wait_after_login_ms: 3000
+
+browser:
+  headless: true
+  wait_for_network_idle: true
+  javascript_enabled: true
+  viewport:
+    width: 1280
+    height: 720
+  timeout_ms: 30000
+  wait_for_spa_routing_ms: 2000
+
+api:
+  base_url: "{{URL}}/api"
+  content_type: "application/json"
+  # SPA typically stores tokens in localStorage or cookies
+  token_storage: auto  # auto-detect from localStorage, sessionStorage, or cookies
+  common_headers:
+    Accept: "application/json"
+
+rules:
+  - type: path
+    action: avoid
+    value: "/logout"
+    description: "Do not trigger logout during testing"
+  - type: path
+    action: avoid
+    value: "/admin/delete"
+    description: "Avoid destructive admin operations"
+  - type: path
+    action: avoid
+    value: "/settings/danger-zone"
+    description: "Stay away from account deletion or destructive settings"
+  - type: path
+    action: avoid
+    value: "/api/auth/revoke"
+    description: "Do not revoke authentication tokens"
+  - type: element
+    action: avoid
+    selector: "button.delete, button.remove, [data-action='delete']"
+    description: "Avoid clicking delete/remove buttons"
+
+pipeline:
+  max_concurrent_pipelines: 3
+
+scanning:
+  scope:
+    include:
+      - "{{URL}}/*"
+    exclude:
+      - "{{URL}}/static/*"
+      - "{{URL}}/assets/*"
+      - "{{URL}}/_next/*"
+      - "{{URL}}/chunk-*"
+      - "{{URL}}/api/health"
+  max_depth: 10
+  request_delay_ms: 300
+  # SPA-specific settings
+  spa_crawling:
+    enabled: true
+    detect_client_routes: true
+    interact_with_forms: true
+    click_navigation_elements: true
+    wait_between_actions_ms: 1000
+
+test_vectors:
+  # Test both browser-side and API-side
+  dom_xss:
+    - "<img src=x onerror=alert(1)>"
+    - "javascript:alert(document.domain)"
+    - "'\"><script>alert(1)</script>"
+  api_injection:
+    - "' OR 1=1 --"
+    - "${7*7}"
+    - "{{constructor.constructor('return this')()}}"
+  prototype_pollution:
+    - "__proto__[polluted]=true"
+    - "constructor.prototype.polluted=true"
+
+reporting:
+  output_dir: "./audit-logs"
+  format: json
+  include_screenshots: true
+  include_request_response: true
+  include_network_logs: true
+  include_dom_snapshots: true

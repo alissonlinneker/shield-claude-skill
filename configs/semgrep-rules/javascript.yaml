@@ -1,0 +1,280 @@
+rules:
+  # ---------------------------------------------------------------------------
+  # SQL Injection
+  # ---------------------------------------------------------------------------
+  - id: js-sql-injection-concatenation
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $DB.query("..." + $INPUT + "...", ...)
+          - pattern: |
+              $DB.query(`...${$INPUT}...`, ...)
+          - pattern: |
+              $DB.execute("..." + $INPUT + "...", ...)
+          - pattern: |
+              $DB.execute(`...${$INPUT}...`, ...)
+    message: >
+      SQL query built with string concatenation or template literals.
+      Use parameterized queries instead.
+    severity: ERROR
+    languages: [javascript, typescript]
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  - id: js-sql-injection-raw-query
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $KNEX.raw("..." + $INPUT + "...", ...)
+          - pattern: |
+              $KNEX.raw(`...${$INPUT}...`, ...)
+          - pattern: |
+              $SEQ.query("..." + $INPUT + "...", ...)
+          - pattern: |
+              $SEQ.query(`...${$INPUT}...`, ...)
+    message: >
+      Raw SQL query built with user input. Use parameterized bindings
+      provided by the ORM or query builder.
+    severity: ERROR
+    languages: [javascript, typescript]
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # XSS — Cross-Site Scripting
+  # ---------------------------------------------------------------------------
+  - id: js-xss-innerhtml
+    patterns:
+      - pattern: |
+          $EL.innerHTML = $INPUT
+      - pattern-not: |
+          $EL.innerHTML = "..."
+    message: >
+      Setting innerHTML with dynamic content can lead to XSS.
+      Use textContent or a sanitization library such as DOMPurify.
+    severity: WARNING
+    languages: [javascript, typescript]
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 Injection"
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  - id: js-xss-document-write
+    pattern: |
+      document.write($INPUT)
+    message: >
+      document.write with dynamic data is a classic XSS sink.
+      Avoid document.write entirely; use DOM manipulation instead.
+    severity: WARNING
+    languages: [javascript, typescript]
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+      impact: HIGH
+      category: security
+
+  - id: js-xss-eval-user-input
+    patterns:
+      - pattern-either:
+          - pattern: |
+              eval($INPUT)
+          - pattern: |
+              new Function($INPUT)
+          - pattern: |
+              setTimeout($INPUT, ...)
+          - pattern: |
+              setInterval($INPUT, ...)
+      - pattern-not: |
+          eval("...")
+    message: >
+      eval() or Function constructor with dynamic input enables code injection.
+      Refactor to avoid dynamic code evaluation entirely.
+    severity: ERROR
+    languages: [javascript, typescript]
+    metadata:
+      cwe: "CWE-95"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Command Injection
+  # ---------------------------------------------------------------------------
+  - id: js-command-injection-exec
+    patterns:
+      - pattern-either:
+          - pattern: |
+              child_process.exec($CMD, ...)
+          - pattern: |
+              child_process.execSync($CMD, ...)
+          - pattern: |
+              require("child_process").exec($CMD, ...)
+          - pattern: |
+              require("child_process").execSync($CMD, ...)
+      - pattern-not: |
+          child_process.exec("...", ...)
+      - pattern-not: |
+          child_process.execSync("...", ...)
+    message: >
+      Passing dynamic input to child_process.exec allows command injection.
+      Use child_process.execFile or spawn with an argument array instead.
+    severity: ERROR
+    languages: [javascript, typescript]
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  - id: js-command-injection-spawn-shell
+    pattern: |
+      child_process.spawn($CMD, $ARGS, {shell: true, ...})
+    message: >
+      Using spawn with shell:true reintroduces command injection risks.
+      Remove the shell option and pass arguments as an array.
+    severity: WARNING
+    languages: [javascript, typescript]
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021 Injection"
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Path Traversal
+  # ---------------------------------------------------------------------------
+  - id: js-path-traversal
+    patterns:
+      - pattern-either:
+          - pattern: |
+              fs.readFile($PATH, ...)
+          - pattern: |
+              fs.readFileSync($PATH, ...)
+          - pattern: |
+              fs.writeFile($PATH, ...)
+          - pattern: |
+              fs.writeFileSync($PATH, ...)
+          - pattern: |
+              fs.createReadStream($PATH, ...)
+      - metavariable-pattern:
+          metavariable: $PATH
+          patterns:
+            - pattern-not: "..."
+    message: >
+      File system operation with potentially user-controlled path.
+      Validate and canonicalize the path, then verify it stays within
+      the intended base directory.
+    severity: WARNING
+    languages: [javascript, typescript]
+    metadata:
+      cwe: "CWE-22"
+      owasp: "A01:2021 Broken Access Control"
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Insecure Randomness
+  # ---------------------------------------------------------------------------
+  - id: js-insecure-random
+    pattern: |
+      Math.random()
+    message: >
+      Math.random() is not cryptographically secure. For tokens, session IDs,
+      or any security-sensitive value, use crypto.randomBytes() or
+      crypto.getRandomValues().
+    severity: WARNING
+    languages: [javascript, typescript]
+    metadata:
+      cwe: "CWE-330"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: LOW
+      impact: MEDIUM
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Prototype Pollution
+  # ---------------------------------------------------------------------------
+  - id: js-prototype-pollution-merge
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $OBJ[...] = $INPUT
+          - pattern: |
+              Object.assign($TARGET, $INPUT)
+      - pattern-not: |
+          Object.assign({}, $INPUT)
+    message: >
+      Merging user-controlled data into objects without sanitization can
+      lead to prototype pollution. Validate keys and reject __proto__,
+      constructor, and prototype properties.
+    severity: WARNING
+    languages: [javascript, typescript]
+    metadata:
+      cwe: "CWE-1321"
+      owasp: "A03:2021 Injection"
+      confidence: LOW
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # NoSQL Injection
+  # ---------------------------------------------------------------------------
+  - id: js-nosql-injection-mongodb
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $COLLECTION.find({..., $FIELD: $INPUT, ...})
+          - pattern: |
+              $COLLECTION.findOne({..., $FIELD: $INPUT, ...})
+          - pattern: |
+              $COLLECTION.updateOne({..., $FIELD: $INPUT, ...}, ...)
+          - pattern: |
+              $COLLECTION.deleteOne({..., $FIELD: $INPUT, ...})
+      - metavariable-pattern:
+          metavariable: $INPUT
+          patterns:
+            - pattern-not: "..."
+            - pattern-not: |
+                {...}
+    message: >
+      MongoDB query with unsanitized input may allow NoSQL injection via
+      operator objects like {$gt: ""}. Validate that the input is a
+      primitive type before use.
+    severity: WARNING
+    languages: [javascript, typescript]
+    metadata:
+      cwe: "CWE-943"
+      owasp: "A03:2021 Injection"
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  - id: js-nosql-injection-where
+    pattern: |
+      $COLLECTION.$WHERE($INPUT)
+    message: >
+      The $where operator evaluates JavaScript on the server. Never pass
+      user-controlled data to $where. Use standard query operators instead.
+    severity: ERROR
+    languages: [javascript, typescript]
+    metadata:
+      cwe: "CWE-943"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+      impact: CRITICAL
+      category: security

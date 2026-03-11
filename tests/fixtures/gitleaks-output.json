@@ -1,0 +1,11 @@
+[
+  {
+    "Description": "AWS Access Key",
+    "File": "src/config/aws.js",
+    "StartLine": 5,
+    "EndLine": 5,
+    "Secret": "AKIA...[REDACTED]",
+    "Match": "aws_access_key_id = \"AKIA...\"",
+    "RuleID": "aws-access-key-id"
+  }
+]
