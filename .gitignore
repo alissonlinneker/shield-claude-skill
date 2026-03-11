@@ -1,4 +1,4 @@
-# Claude Code
+# Editor workspace
 .memory-bank/
 .mcp.json
 .claude-logs/
@@ -25,3 +25,6 @@ Thumbs.db
 # Environment
 .env
 .env.*
+
+# Internal design docs
+docs/plans/

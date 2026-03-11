@@ -386,9 +386,8 @@ case "$PACKAGE_MANAGER" in
         run_composer_audit
         ;;
     *)
-        echo "Error: Unsupported package manager: $PACKAGE_MANAGER" >&2
+        echo "Warning: Unsupported package manager: $PACKAGE_MANAGER" >&2
         echo "Supported: npm, yarn, pnpm, pip, composer" >&2
         printf '{"tool":"sca","package_manager":"%s","findings":[],"summary":{"total":0},"error":"unsupported package manager"}\n' "$PACKAGE_MANAGER"
-        exit 1
         ;;
 esac

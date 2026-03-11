@@ -180,7 +180,7 @@ All dependencies are up to date.
 | [Semgrep](https://semgrep.dev/) | Recommended | Static analysis (SAST) | `brew install semgrep` or `pip install semgrep` |
 | [gitleaks](https://github.com/gitleaks/gitleaks) | Recommended | Secrets scanning | `brew install gitleaks` |
 | [jq](https://jqlang.github.io/jq/) | Required | JSON processing for consolidation | `brew install jq` |
-| [Trivy](https://trivy.dev/) | Optional | Container and IaC scanning | `brew install trivy` |
+| [Trivy](https://trivy.dev/) | Optional | Container and IaC scanning (v0.2.0) | `brew install trivy` |
 | [Shannon](https://github.com/KeygraphHQ/shannon) | Optional | Autonomous penetration testing | `git clone` + Docker |
 | [Docker](https://www.docker.com/) | Optional | Required for Shannon pentest | `brew install --cask docker` |
 | npm / yarn / pnpm | Auto-detected | Node.js dependency audit + freshness | Bundled with Node.js |
