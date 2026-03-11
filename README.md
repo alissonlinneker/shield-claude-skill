@@ -39,6 +39,22 @@ Your Code --> detect-stack.sh --| gitleaks Secrets   |  Full git history scan
                    (0-100)         (ready diffs)    (per finding)
 ```
 
+## Quick Start
+
+```bash
+# 1. Clone
+git clone https://github.com/alissonlinneker/shield-claude-skill.git
+
+# 2. Install security tools
+cd shield-claude-skill && ./install.sh
+
+# 3. Register in Claude Code
+claude plugin add /path/to/shield-claude-skill
+
+# 4. Open any project and run
+/shield
+```
+
 ## Features
 
 | Category | Capability | Details |
@@ -221,15 +237,20 @@ git clone https://github.com/KeygraphHQ/shannon.git ~/shannon
 
 ### Skill Registration
 
-Register Shield with your code editor CLI's skill system:
+**Claude Code (recommended):**
 
 ```bash
-# Register the skill (syntax varies by editor CLI)
-your-editor-cli skill add /path/to/shield-claude-skill
+# Install as a plugin
+claude plugin add /path/to/shield-claude-skill
 
-# Verify registration
-your-editor-cli skill list
+# Or install from GitHub directly
+claude plugin add https://github.com/alissonlinneker/shield-claude-skill
+
+# Verify installation
+claude plugin list
 ```
+
+**Other editor CLIs** that support markdown skills can register Shield using their native skill/plugin system.
 
 ## Usage Examples
 
