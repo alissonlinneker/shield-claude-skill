@@ -42,17 +42,26 @@ Your Code --> detect-stack.sh --| gitleaks Secrets   |  Full git history scan
 ## Quick Start
 
 ```bash
-# 1. Clone
+# 1. Clone and install security tools
 git clone https://github.com/alissonlinneker/shield-claude-skill.git
-
-# 2. Install security tools
 cd shield-claude-skill && ./install.sh
 
-# 3. Register in Claude Code
-claude plugin add /path/to/shield-claude-skill
+# 2. Register the marketplace in Claude Code (run inside Claude Code)
+/plugin marketplace add /path/to/shield-claude-skill
+
+# 3. Install the plugin
+/plugin install shield@shield-security
 
 # 4. Open any project and run
-/shield
+/shield:shield
+```
+
+Or for quick testing without marketplace registration:
+
+```bash
+claude --plugin-dir /path/to/shield-claude-skill
+# Then inside Claude Code:
+/shield:shield
 ```
 
 ## Features
@@ -235,22 +244,30 @@ apt install trivy          # or add Aqua Security repo
 git clone https://github.com/KeygraphHQ/shannon.git ~/shannon
 ```
 
-### Skill Registration
+### Plugin Registration (Claude Code)
 
-**Claude Code (recommended):**
+From inside Claude Code, register the marketplace and install:
 
 ```bash
-# Install as a plugin
-claude plugin add /path/to/shield-claude-skill
+# Option A: From local clone
+/plugin marketplace add /path/to/shield-claude-skill
+/plugin install shield@shield-security
 
-# Or install from GitHub directly
-claude plugin add https://github.com/alissonlinneker/shield-claude-skill
+# Option B: From GitHub
+/plugin marketplace add alissonlinneker/shield-claude-skill
+/plugin install shield@shield-security
 
 # Verify installation
-claude plugin list
+/plugin list
 ```
 
-**Other editor CLIs** that support markdown skills can register Shield using their native skill/plugin system.
+For development and testing, load directly without installing:
+
+```bash
+claude --plugin-dir /path/to/shield-claude-skill
+```
+
+After installation, the skill is available as `/shield:shield` in any project. Run `/reload-plugins` if you update the plugin files.
 
 ## Usage Examples
 
