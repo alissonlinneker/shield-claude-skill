@@ -18,7 +18,7 @@ description: "Orchestrates security scanning and autonomous penetration testing.
 | Mode | Trigger | What Runs |
 |------|---------|-----------|
 | **full** | `/shield full` or `/shield URL=https://app.com` | Shannon pentest + all complementary tools |
-| **quick** | `/shield` or `/shield quick` | Semgrep + gitleaks + package audit only |
+| **quick** | `/shield` or `/shield quick` | Semgrep + gitleaks + package audit + dependency freshness |
 | **fix** | `/shield fix` | Re-analyze existing report and propose fixes |
 | **verify** | `/shield verify` | Re-scan to confirm fixes resolved findings |
 | **score** | `/shield score` | Calculate and display security scorecard only |

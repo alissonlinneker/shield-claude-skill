@@ -75,10 +75,25 @@
   ],
   "summary": {
     "total": 6,
-    "critical": 2,
-    "high": 2,
-    "medium": 1,
-    "low": 1
+    "by_severity": {
+      "critical": 2,
+      "high": 2,
+      "medium": 1,
+      "low": 1
+    },
+    "by_tool": {
+      "semgrep": 4,
+      "gitleaks": 1,
+      "npm-audit": 1
+    },
+    "by_cwe": {
+      "CWE-89": 1,
+      "CWE-798": 1,
+      "CWE-1321": 1,
+      "CWE-79": 1,
+      "CWE-16": 1,
+      "CWE-532": 1
+    }
   },
   "metadata": {
     "scan_date": "2026-03-11",

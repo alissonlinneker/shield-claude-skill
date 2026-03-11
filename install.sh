@@ -78,6 +78,50 @@ record_status() {
     TOOLS_STATUS+=("${tool}|${status}|${note}")
 }
 
+install_jq() {
+    log_info "Checking jq (JSON processor — required)..."
+    if check_command jq; then
+        local version
+        version=$(jq --version 2>/dev/null || echo "unknown")
+        log_success "jq already installed (${version})"
+        record_status "jq" "installed" "${version}"
+        ((SKIPPED++))
+        return
+    fi
+
+    log_info "Installing jq..."
+    if [[ "$OS" == "macos" ]] && check_command brew; then
+        if brew install jq 2>/dev/null; then
+            log_success "jq installed via Homebrew"
+            record_status "jq" "installed" "via brew"
+            ((INSTALLED++))
+            return
+        fi
+    fi
+
+    if [[ "$OS" == "linux" ]]; then
+        if check_command apt-get; then
+            if sudo apt-get install -y jq 2>/dev/null; then
+                log_success "jq installed via apt"
+                record_status "jq" "installed" "via apt"
+                ((INSTALLED++))
+                return
+            fi
+        elif check_command dnf; then
+            if sudo dnf install -y jq 2>/dev/null; then
+                log_success "jq installed via dnf"
+                record_status "jq" "installed" "via dnf"
+                ((INSTALLED++))
+                return
+            fi
+        fi
+    fi
+
+    log_error "Could not install jq. This is required. Install manually: https://jqlang.github.io/jq/download/"
+    record_status "jq" "missing" "REQUIRED — install manually"
+    ((FAILED++))
+}
+
 install_semgrep() {
     log_info "Checking Semgrep (SAST engine)..."
     if check_command semgrep; then
@@ -402,6 +446,10 @@ main() {
         log_warn "Install Homebrew: https://brew.sh"
     fi
 
+    echo ""
+
+    # Required dependencies
+    install_jq
     echo ""
 
     # Core tools

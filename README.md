@@ -364,6 +364,7 @@ Shield uses native package manager commands for accurate, lockfile-aware checks:
 | Ecosystem | Command | Output |
 |-----------|---------|--------|
 | npm | `npm outdated --json` | Current vs. wanted vs. latest for each package |
+| yarn | `yarn outdated --json` | NDJSON table with current, wanted, latest |
 | pnpm | `pnpm outdated --format json` | Same structure, workspace-aware |
 | pip | `pip list --outdated --format json` | Installed vs. latest version |
 | Composer | `composer outdated --format json` | Direct and transitive dependency status |
@@ -384,7 +385,7 @@ Every finding is mapped to relevant compliance framework controls:
 
 | OWASP 2021 | SOC 2 | PCI-DSS | Example CWEs |
 |------------|-------|---------|--------------|
-| A01 Broken Access Control | CC6.1, CC6.3 | 6.5.8, 7.1 | CWE-22, CWE-284, CWE-639 |
+| A01 Broken Access Control | CC6.1, CC6.3 | 6.5.8, 7.1 | CWE-22, CWE-284, CWE-285, CWE-639 |
 | A02 Cryptographic Failures | CC6.1, CC6.7 | 3.4, 4.1, 6.5.3 | CWE-259, CWE-327, CWE-328 |
 | A03 Injection | CC6.1 | 6.5.1 | CWE-20, CWE-74, CWE-79, CWE-89 |
 | A04 Insecure Design | CC3.2, CC5.2 | 6.3 | CWE-209, CWE-256, CWE-501 |
@@ -399,7 +400,7 @@ Every finding is mapped to relevant compliance framework controls:
 
 | Ecosystem | Stack Detection | Vulnerability Audit | Outdated Check | SAST Rules |
 |-----------|:-:|:-:|:-:|:-:|
-| **Node.js** (npm/yarn/pnpm) | Yes | npm/yarn/pnpm audit | npm/pnpm outdated | 12 rules |
+| **Node.js** (npm/yarn/pnpm) | Yes | npm/yarn/pnpm audit | npm/yarn/pnpm outdated | 12 rules |
 | **Python** (pip/pipenv/poetry) | Yes | pip-audit | pip list --outdated | 11 rules |
 | **PHP** (Composer) | Yes | composer audit | composer outdated | 11 rules |
 | **Go** | Yes | Planned | Planned | Planned |
@@ -421,6 +422,7 @@ scripts/
   run-sast.sh               # Runs Semgrep with language-specific rule configs
   run-secrets.sh            # Runs gitleaks across git history
   run-sca.sh                # Runs package manager audit (npm/pip/composer)
+  run-outdated.sh           # Checks for outdated dependencies with security cross-ref
   run-shannon.sh            # Orchestrates Shannon pentest workflow
   generate-shannon-config.sh # Generates Shannon YAML from detected stack
   setup-shannon.sh          # Initial Shannon installation helper
