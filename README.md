@@ -8,6 +8,7 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
   <a href="https://github.com/alissonlinneker/shield-claude-skill/releases"><img src="https://img.shields.io/badge/version-0.1.0-green.svg" alt="Version 0.1.0"></a>
+  <a href="docs/self-scan-report.md"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Falissonlinneker%2Fshield-claude-skill%2Fmain%2Fshield-badge.json&query=%24.message&label=Shield%20Score&color=brightgreen" alt="Shield Score"></a>
   <a href="https://github.com/alissonlinneker/shield-claude-skill/stargazers"><img src="https://img.shields.io/github/stars/alissonlinneker/shield-claude-skill?style=social" alt="GitHub Stars"></a>
 </p>
 
@@ -518,6 +519,44 @@ Shield wraps the [Shannon autonomous pentester](https://github.com/KeygraphHQ/sh
 | `web-app.yaml` | Server-rendered apps (Express, Django, Laravel, Rails) |
 | `spa-with-api.yaml` | SPAs with REST/GraphQL backends (React+Express, Vue+FastAPI) |
 | `api-only.yaml` | Headless APIs and microservices |
+
+## Security Badge
+
+After scanning your project with Shield, you can add a security score badge to your README. This shows visitors that your project is actively monitored for vulnerabilities.
+
+### Generate the Badge
+
+After running `/shield:shield`, generate the badge file:
+
+```bash
+# From your project root (after a scan):
+bash /path/to/shield-claude-skill/scripts/generate-badge.sh /tmp/consolidated.json > shield-badge.json
+```
+
+Or ask Shield to generate it as part of the scan — it will create `shield-badge.json` in your project root.
+
+### Add to Your README
+
+Commit `shield-badge.json` to your repo, then add this to your README:
+
+```markdown
+![Shield Score](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FYOUR_USER%2FYOUR_REPO%2Fmain%2Fshield-badge.json&query=%24.message&label=Shield%20Score&style=flat)
+```
+
+Replace `YOUR_USER` and `YOUR_REPO` with your GitHub username and repository name.
+
+### Badge Examples
+
+| Score | Badge |
+|-------|-------|
+| 100/100 | ![Shield Score](https://img.shields.io/badge/Shield_Score-100%2F100-brightgreen) |
+| 85/100 | ![Shield Score](https://img.shields.io/badge/Shield_Score-85%2F100-yellow) |
+| 55/100 | ![Shield Score](https://img.shields.io/badge/Shield_Score-55%2F100-orange) |
+| 20/100 | ![Shield Score](https://img.shields.io/badge/Shield_Score-20%2F100-red) |
+
+### Keep It Updated
+
+Re-run `/shield:shield` periodically and regenerate the badge to keep your score current. The badge reads from the JSON file in your repo, so it updates automatically when you push a new `shield-badge.json`.
 
 ## Contributing
 

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "label": "Shield Score",
+  "message": "100/100",
+  "color": "brightgreen",
+  "metadata": {
+    "score": 100,
+    "risk_level": "LOW",
+    "total_findings": 0,
+    "scan_date": "2026-03-12"
+  }
+}
