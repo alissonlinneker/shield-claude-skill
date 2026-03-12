@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 195 80" width="195" height="80">
 
   <!-- Slash prompt -->
-  <text x="2" y="48" font-family="SF Mono, Fira Code, Consolas, monospace" font-size="48" font-weight="400" fill="#10b981">/</text>
+  <text x="50%" y="48" font-family="SF Mono, Fira Code, Consolas, monospace" font-size="48" font-weight="400" fill="#10b981" text-anchor="middle" dx="-83">/</text>
 
   <!-- Shield word -->
-  <text x="30" y="48" font-family="Inter, -apple-system, Helvetica Neue, Arial, sans-serif" font-size="52" font-weight="800" letter-spacing="-1.5" fill="#0f172a">shield</text>
+  <text x="50%" y="48" font-family="Inter, -apple-system, Helvetica Neue, Arial, sans-serif" font-size="52" font-weight="800" letter-spacing="-1.5" fill="#0f172a" text-anchor="middle" dx="11">shield</text>
 
-  <!-- Tagline aligned with the slash -->
-  <text x="2" y="72" font-family="SF Mono, Fira Code, Consolas, monospace" font-size="12" fill="#94a3b8" letter-spacing="0.3">security orchestrator</text>
+  <!-- Tagline centered -->
+  <text x="50%" y="72" font-family="SF Mono, Fira Code, Consolas, monospace" font-size="12" fill="#94a3b8" letter-spacing="0.3" text-anchor="middle">security orchestrator</text>
 
 </svg>
