@@ -1,16 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 90" width="280" height="90">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 218 90" width="218" height="90">
 
   <!-- Slash prompt -->
-  <text x="20" y="52" font-family="SF Mono, Fira Code, Consolas, monospace" font-size="48" font-weight="400" fill="#10b981">/</text>
+  <text x="2" y="52" font-family="SF Mono, Fira Code, Consolas, monospace" font-size="48" font-weight="400" fill="#10b981">/</text>
 
   <!-- Shield word -->
-  <text x="48" y="52" font-family="Inter, -apple-system, Helvetica Neue, Arial, sans-serif" font-size="52" font-weight="800" letter-spacing="-1.5" fill="#0f172a">shield</text>
+  <text x="30" y="52" font-family="Inter, -apple-system, Helvetica Neue, Arial, sans-serif" font-size="52" font-weight="800" letter-spacing="-1.5" fill="#0f172a">shield</text>
 
   <!-- Score bar -->
-  <rect x="48" y="64" width="160" height="3" rx="1.5" fill="#e2e8f0"/>
-  <rect x="48" y="64" width="160" height="3" rx="1.5" fill="#10b981"/>
-
-  <!-- Tagline -->
-  <text x="48" y="84" font-family="SF Mono, Fira Code, Consolas, monospace" font-size="12" fill="#94a3b8" letter-spacing="0.3">security orchestrator</text>
+  <text x="30" y="84" font-family="SF Mono, Fira Code, Consolas, monospace" font-size="12" fill="#94a3b8" letter-spacing="0.3">security orchestrator</text>
 
 </svg>
