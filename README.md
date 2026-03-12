@@ -1,4 +1,6 @@
-<h1 align="center">Shield</h1>
+<p align="center">
+  <img src="docs/logo.svg" alt="Shield" width="320">
+</p>
 
 <p align="center">
   <strong>Security orchestration for code editor CLIs.</strong><br>
