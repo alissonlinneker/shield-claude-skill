@@ -23,7 +23,7 @@ print_banner() {
     echo -e "${BOLD}"
     echo "╔═══════════════════════════════════════════╗"
     echo "║          Shield — Install Script          ║"
-    echo "║       Security Orchestrator v0.1.0        ║"
+    echo "║       Security Orchestrator v0.2.0        ║"
     echo "╚═══════════════════════════════════════════╝"
     echo -e "${NC}"
 }

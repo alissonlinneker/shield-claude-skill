@@ -9,7 +9,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
-  <a href="https://github.com/alissonlinneker/shield-claude-skill/releases"><img src="https://img.shields.io/badge/version-0.1.1-green.svg" alt="Version 0.1.1"></a>
+  <a href="https://github.com/alissonlinneker/shield-claude-skill/releases"><img src="https://img.shields.io/badge/version-0.2.0-green.svg" alt="Version 0.2.0"></a>
   <a href="docs/self-scan-report.md"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Falissonlinneker%2Fshield-claude-skill%2Fmain%2Fshield-badge.json&query=%24.message&label=Shield%20Score&color=brightgreen" alt="Shield Score"></a>
   <a href="https://github.com/alissonlinneker/shield-claude-skill/stargazers"><img src="https://img.shields.io/github/stars/alissonlinneker/shield-claude-skill?style=social" alt="GitHub Stars"></a>
 </p>
@@ -200,6 +200,58 @@ All dependencies are up to date.
 | **Verify** | `/shield:shield verify` | Re-scan after fixes -- confirms issues are resolved, compares against baseline |
 | **Score** | `/shield:shield score` | Scorecard only -- calculates risk score from last scan or fresh data |
 | **Outdated** | `/shield:shield outdated` | Dependency freshness check -- lists all outdated packages by severity tier |
+| **Audit** | `/shield:audit` | Intelligence analysis -- attack chains, false positives, logic vulns, IaC review. No tools required |
+
+## Security Auditor — Intelligence Layer
+
+Shield runs the tools. The Security Auditor provides the brain.
+
+```
+/shield:shield quick          # Step 1: scan with tools
+/shield:audit                 # Step 2: deep analysis with reasoning
+```
+
+Or use the auditor standalone on any file — no scan needed:
+
+```
+/shield:audit src/auth.py     # Code audit
+/shield:audit Dockerfile      # IaC security review
+/shield:audit terraform/      # Infrastructure review
+```
+
+### What Shield vs Security Auditor covers
+
+| Capability | `/shield:shield` | `/shield:audit` |
+|-----------|:-:|:-:|
+| Semgrep SAST (34 rules) | Runs the tool | Confirms, explains, provides full fix code |
+| Secrets (git history) | gitleaks scan | Inline + config file detection |
+| Dependency CVEs | npm/pip/composer audit | Explains exploitability context |
+| Autonomous pentest | Shannon | Manual reasoning layer |
+| IaC security (Docker/k8s/Terraform/CI) | -- | Full checklist-based review |
+| Logic vulnerabilities (IDOR, race conditions) | -- | Business logic analysis |
+| Architecture / threat model | -- | Trust boundaries, attack surface mapping |
+| Attack chain narrative | -- | End-to-end exploitation story |
+| False positive analysis | -- | Context-aware confirmation |
+| No tools required | Needs installs | Works anywhere |
+
+### Score adjustment
+
+When the auditor runs after Shield, it adjusts the risk score:
+
+```
+Shield score:              62/100
+Logic vulnerabilities:     -15 (1 IDOR found, not detectable by Semgrep)
+False positives removed:   +8  (SHIELD-023, SHIELD-031 confirmed FP)
+Adjusted score:            55/100 — HIGH RISK
+```
+
+### Reference files (loaded on demand)
+
+| File | When loaded | Content |
+|------|------------|---------|
+| `owasp-top10.md` | Application code analysis | OWASP Top 10 2021 with CWEs and vulnerable/fixed code patterns |
+| `iac-checklist.md` | Dockerfile, k8s, Terraform, GitHub Actions, nginx | Security checklists by severity tier |
+| `crypto-guidance.md` | Crypto issues (passwords, JWT, TLS, AES, keys) | Algorithm selection, code examples, common mistakes |
 
 ## Prerequisites
 

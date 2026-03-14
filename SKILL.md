@@ -219,3 +219,30 @@ If the user hasn't installed Shield's dependencies yet, point them to `install.s
 | A08 Data Integrity Failures | CC7.2 | 6.5.8 | 345, 502 |
 | A09 Logging Failures | CC7.2, CC7.3 | 10.1 | 117, 223, 778 |
 | A10 SSRF | CC6.1 | 6.5.9 | 918 |
+
+---
+
+## `/shield:audit` — Intelligence analysis command
+
+After running `/shield:shield`, the Security Auditor skill can enrich findings with deep
+reasoning that tools cannot provide.
+
+**Usage:**
+```
+/shield:audit                          # Analyze findings from last scan
+/shield:audit <path/to/consolidated.json>   # Analyze specific output file
+/shield:audit <file.py>                # Direct code audit, no scan needed
+/shield:audit <Dockerfile>             # IaC security review
+```
+
+**What it adds on top of Shield's tool output:**
+- Full attack chain for each SHIELD-XXX finding
+- Exploitability rating: Trivial / Easy / Moderate / Hard / Theoretical
+- False positive analysis for Semgrep findings
+- Logic vulnerability detection (business logic flaws, IDOR, race conditions)
+- IaC deep review (Dockerfile, k8s, Terraform, GitHub Actions)
+- Complete fix code, not just diff hints
+- Adjusted risk score combining tool findings + manual analysis
+
+The Security Auditor skill lives at `skills/security-auditor/SKILL.md` and loads reference
+files on demand to keep context lean.

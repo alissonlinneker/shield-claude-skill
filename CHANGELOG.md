@@ -5,6 +5,22 @@ All notable changes to Shield will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-03-14
+
+### Added
+
+- **Security Auditor skill** (`/shield:audit`) — intelligence layer that complements tool-based scanning
+  - Attack chain analysis for each SHIELD-XXX finding with exploitability rating
+  - False positive detection and confirmation with reasoning
+  - Logic vulnerability analysis (IDOR, race conditions, business logic flaws)
+  - IaC security review (Dockerfile, Kubernetes, Terraform, GitHub Actions, nginx)
+  - Architecture threat modeling (trust boundaries, attack surface mapping)
+  - Adjusted risk score combining tool output + manual analysis
+  - Works without any tools installed — pure reasoning
+- **OWASP Top 10 reference** (`references/owasp-top10.md`) — compact reference with CWEs and code patterns
+- **IaC security checklist** (`references/iac-checklist.md`) — Docker, k8s, Terraform, GitHub Actions, nginx
+- **Cryptography guidance** (`references/crypto-guidance.md`) — passwords, AES, JWT, TLS, key management
+
 ## [0.1.1] - 2026-03-12
 
 ### Added
@@ -43,5 +59,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **189 unit tests** across 4 test suites (detect-stack, check-prereqs, consolidate, calculate-score)
 - 6 modes: full, quick, fix, verify, score, outdated
 
+[0.2.0]: https://github.com/alissonlinneker/shield-claude-skill/releases/tag/v0.2.0
 [0.1.1]: https://github.com/alissonlinneker/shield-claude-skill/releases/tag/v0.1.1
 [0.1.0]: https://github.com/alissonlinneker/shield-claude-skill/releases/tag/v0.1.0

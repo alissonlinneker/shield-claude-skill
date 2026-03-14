@@ -1,6 +1,6 @@
 {
   "name": "shield",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Security orchestrator — autonomous pentests, SAST, secrets scanning, dependency audits, and outdated checks from your code editor CLI. Wraps Shannon pentester with Semgrep, gitleaks, and package audit tools into a unified security workflow with risk scoring and fix proposals.",
   "author": {
     "name": "ALASTecnology"
