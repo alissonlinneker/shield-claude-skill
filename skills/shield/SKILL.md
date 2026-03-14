@@ -33,8 +33,9 @@ Run `${CLAUDE_SKILL_DIR}/../../scripts/check-prereqs.sh` from the skill director
 - Shannon installation (cloned repo with `./shannon` CLI)
 - Semgrep (`semgrep` binary)
 - gitleaks (`gitleaks` binary)
+- jq (required for JSON processing)
 - Package audit tools (`npm audit`, `pip-audit`, `composer audit`)
-- Additional ecosystem tools: `govulncheck` (Go), `bundle-audit` (Ruby), `cargo-audit` (Rust), `dotnet` (.NET), `mvn`/`gradle` (Java)
+- Additional ecosystem tools: `govulncheck` (Go), `bundle-audit` (Ruby), `cargo-audit`/`cargo-outdated` (Rust), `dotnet` (.NET), `mvn`/`gradle` (Java), `trivy` (containers)
 
 Report which tools are available and which are missing with installation instructions.
 If no tools are available at all, stop and provide installation guidance.

@@ -108,6 +108,16 @@ check_composer_audit() {
     fi
 }
 
+check_jq() {
+    if check_command jq; then
+        local ver
+        ver="$(jq --version 2>/dev/null || echo "unknown")"
+        printf '{"available":true,"version":"%s"}' "$(json_escape "$ver")"
+    else
+        printf '{"available":false,"install":"brew install jq  OR  apt install jq"}'
+    fi
+}
+
 check_govulncheck() {
     if check_command govulncheck; then
         printf '{"available":true}'
@@ -187,6 +197,7 @@ check_gradle() {
 # --- Main ---
 
 printf '{\n'
+printf '  "jq": %s,\n' "$(check_jq)"
 printf '  "docker": %s,\n' "$(check_docker)"
 printf '  "shannon": %s,\n' "$(check_shannon)"
 printf '  "semgrep": %s,\n' "$(check_semgrep)"

@@ -1,0 +1,356 @@
+rules:
+  # ---------------------------------------------------------------------------
+  # SQL Injection
+  # ---------------------------------------------------------------------------
+  - id: csharp-sql-injection
+    patterns:
+      - pattern-either:
+          - pattern: |
+              new SqlCommand("..." + $INPUT + "...", ...)
+          - pattern: |
+              new SqlCommand($"...", ...)
+          - pattern: |
+              $CMD.CommandText = "..." + $INPUT + "..."
+          - pattern: |
+              $CMD.ExecuteReader("..." + $INPUT + "...")
+          - pattern: |
+              $CMD.ExecuteNonQuery("..." + $INPUT + "...")
+          - pattern: |
+              $CMD.ExecuteScalar("..." + $INPUT + "...")
+    message: >
+      SQL query built with string concatenation or interpolation in
+      SqlCommand. Use parameterized queries with SqlParameter
+      (e.g., cmd.Parameters.AddWithValue("@name", input)) to prevent
+      SQL injection.
+    severity: ERROR
+    languages: [csharp]
+    metadata:
+      cwe: ["CWE-89"]
+      owasp: ["A03:2021 Injection"]
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Command Injection
+  # ---------------------------------------------------------------------------
+  - id: csharp-command-injection
+    patterns:
+      - pattern-either:
+          - pattern: |
+              Process.Start($CMD)
+          - pattern: |
+              Process.Start($CMD, $ARGS)
+          - pattern: |
+              new ProcessStartInfo($CMD, $ARGS)
+          - pattern: |
+              $PSI.Arguments = $ARGS
+          - pattern: |
+              $PSI.FileName = $CMD
+      - metavariable-pattern:
+          metavariable: $CMD
+          patterns:
+            - pattern-not: "..."
+    message: >
+      Process.Start() or ProcessStartInfo called with a potentially
+      user-controlled command or arguments. Validate and sanitize all
+      input, use an allowlist of permitted commands, and avoid passing
+      unsanitized user data as command arguments.
+    severity: ERROR
+    languages: [csharp]
+    metadata:
+      cwe: ["CWE-78"]
+      owasp: ["A03:2021 Injection"]
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Path Traversal
+  # ---------------------------------------------------------------------------
+  - id: csharp-path-traversal
+    patterns:
+      - pattern-either:
+          - pattern: |
+              File.ReadAllText($PATH)
+          - pattern: |
+              File.WriteAllText($PATH, ...)
+          - pattern: |
+              File.ReadAllBytes($PATH)
+          - pattern: |
+              File.WriteAllBytes($PATH, ...)
+          - pattern: |
+              File.Open($PATH, ...)
+          - pattern: |
+              File.OpenRead($PATH)
+          - pattern: |
+              File.OpenWrite($PATH)
+          - pattern: |
+              Path.Combine($BASE, $PATH)
+          - pattern: |
+              new FileStream($PATH, ...)
+          - pattern: |
+              new StreamReader($PATH)
+          - pattern: |
+              new StreamWriter($PATH)
+      - metavariable-pattern:
+          metavariable: $PATH
+          patterns:
+            - pattern-not: "..."
+    message: >
+      File or path operation with a potentially user-controlled path.
+      Canonicalize with Path.GetFullPath() and verify the result stays
+      within the intended base directory to prevent path traversal
+      attacks. Reject paths containing ".." sequences.
+    severity: WARNING
+    languages: [csharp]
+    metadata:
+      cwe: ["CWE-22"]
+      owasp: ["A01:2021 Broken Access Control"]
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # XSS — Cross-Site Scripting
+  # ---------------------------------------------------------------------------
+  - id: csharp-xss-html-raw
+    patterns:
+      - pattern-either:
+          - pattern: |
+              Html.Raw($INPUT)
+          - pattern: |
+              @Html.Raw($INPUT)
+      - metavariable-pattern:
+          metavariable: $INPUT
+          patterns:
+            - pattern-not: "..."
+    message: >
+      Html.Raw() renders content without HTML encoding, which can lead
+      to cross-site scripting (XSS) if the input contains user data.
+      Use HtmlEncoder.Encode() or the default Razor encoding (@variable)
+      instead. Only use Html.Raw() for trusted, pre-sanitized content.
+    severity: ERROR
+    languages: [csharp]
+    metadata:
+      cwe: ["CWE-79"]
+      owasp: ["A03:2021 Injection"]
+      confidence: HIGH
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Insecure Deserialization
+  # ---------------------------------------------------------------------------
+  - id: csharp-insecure-deserialization
+    patterns:
+      - pattern-either:
+          - pattern: |
+              new BinaryFormatter().Deserialize(...)
+          - pattern: |
+              $BF.Deserialize(...)
+          - pattern: |
+              JsonConvert.DeserializeObject<$T>($DATA, new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.All })
+          - pattern: |
+              JsonConvert.DeserializeObject<$T>($DATA, new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto })
+          - pattern: |
+              JsonConvert.DeserializeObject<$T>($DATA, new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Objects })
+          - pattern: |
+              new BinaryFormatter()
+          - pattern: |
+              $SETTINGS.TypeNameHandling = TypeNameHandling.All
+          - pattern: |
+              $SETTINGS.TypeNameHandling = TypeNameHandling.Auto
+          - pattern: |
+              $SETTINGS.TypeNameHandling = TypeNameHandling.Objects
+    message: >
+      BinaryFormatter.Deserialize() or JsonConvert with unsafe
+      TypeNameHandling can lead to remote code execution when processing
+      untrusted data. BinaryFormatter is obsolete and should never be
+      used. For JSON, use TypeNameHandling.None (default) or use
+      System.Text.Json which does not support polymorphic deserialization
+      by default.
+    severity: ERROR
+    languages: [csharp]
+    metadata:
+      cwe: ["CWE-502"]
+      owasp: ["A08:2021 Software and Data Integrity Failures"]
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Hardcoded Credentials
+  # ---------------------------------------------------------------------------
+  - id: csharp-hardcoded-credentials
+    patterns:
+      - pattern-either:
+          - pattern: |
+              string $X = "...";
+          - pattern: |
+              const string $X = "...";
+          - pattern: |
+              private const string $X = "...";
+          - pattern: |
+              private static readonly string $X = "...";
+      - metavariable-regex:
+          metavariable: $X
+          regex: (?i)(password|passwd|secret|api_key|apikey|token|secret_key|secretkey|credentials|connectionstring|conn_string|connstring)
+    message: >
+      Hardcoded credential detected in a string literal. Store secrets
+      in environment variables, Azure Key Vault, the .NET Secret Manager,
+      or encrypted configuration files — never in source code.
+    severity: ERROR
+    languages: [csharp]
+    metadata:
+      cwe: ["CWE-798"]
+      owasp: ["A07:2021 Identification and Authentication Failures"]
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Weak Cryptography
+  # ---------------------------------------------------------------------------
+  - id: csharp-weak-crypto
+    patterns:
+      - pattern-either:
+          - pattern: |
+              MD5.Create()
+          - pattern: |
+              SHA1.Create()
+          - pattern: |
+              new MD5CryptoServiceProvider()
+          - pattern: |
+              new SHA1CryptoServiceProvider()
+          - pattern: |
+              new SHA1Managed()
+          - pattern: |
+              new MD5Managed()
+          - pattern: |
+              new DESCryptoServiceProvider()
+          - pattern: |
+              new TripleDESCryptoServiceProvider()
+          - pattern: |
+              DES.Create()
+          - pattern: |
+              TripleDES.Create()
+    message: >
+      MD5, SHA-1, DES, and TripleDES are cryptographically broken and
+      must not be used for hashing passwords, digital signatures, or
+      encryption. Use SHA-256/SHA-512 for hashing, AES for encryption,
+      or bcrypt/argon2/scrypt for passwords.
+    severity: WARNING
+    languages: [csharp]
+    metadata:
+      cwe: ["CWE-328", "CWE-327"]
+      owasp: ["A02:2021 Cryptographic Failures"]
+      confidence: HIGH
+      impact: MEDIUM
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # SSRF — Server-Side Request Forgery
+  # ---------------------------------------------------------------------------
+  - id: csharp-ssrf
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $CLIENT.GetAsync($URL)
+          - pattern: |
+              $CLIENT.PostAsync($URL, ...)
+          - pattern: |
+              $CLIENT.SendAsync(new HttpRequestMessage(..., $URL))
+          - pattern: |
+              $CLIENT.GetStringAsync($URL)
+          - pattern: |
+              $CLIENT.GetStreamAsync($URL)
+          - pattern: |
+              $CLIENT.GetByteArrayAsync($URL)
+          - pattern: |
+              new HttpRequestMessage(..., $URL)
+          - pattern: |
+              WebRequest.Create($URL)
+      - metavariable-pattern:
+          metavariable: $URL
+          patterns:
+            - pattern-not: "..."
+    message: >
+      HTTP request made with a potentially user-controlled URL. Validate
+      the URL against an allowlist and block requests to internal,
+      private, or loopback IP ranges (127.0.0.0/8, 10.0.0.0/8,
+      172.16.0.0/12, 169.254.0.0/16) to prevent SSRF attacks.
+    severity: WARNING
+    languages: [csharp]
+    metadata:
+      cwe: ["CWE-918"]
+      owasp: ["A10:2021 SSRF"]
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Open Redirect
+  # ---------------------------------------------------------------------------
+  - id: csharp-open-redirect
+    patterns:
+      - pattern-either:
+          - pattern: |
+              Redirect($URL)
+          - pattern: |
+              RedirectPermanent($URL)
+          - pattern: |
+              return Redirect($URL)
+          - pattern: |
+              return RedirectPermanent($URL)
+          - pattern: |
+              Response.Redirect($URL)
+          - pattern: |
+              return new RedirectResult($URL)
+      - metavariable-pattern:
+          metavariable: $URL
+          patterns:
+            - pattern-not: "..."
+    message: >
+      Redirect with a potentially user-controlled URL may allow open
+      redirect attacks. Use Url.IsLocalUrl() to validate that the target
+      is a local path, or check against an allowlisted set of domains
+      before redirecting. Prefer LocalRedirect() which only accepts
+      local URLs.
+    severity: WARNING
+    languages: [csharp]
+    metadata:
+      cwe: ["CWE-601"]
+      owasp: ["A01:2021 Broken Access Control"]
+      confidence: MEDIUM
+      impact: MEDIUM
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Missing HTTPS Enforcement
+  # ---------------------------------------------------------------------------
+  - id: csharp-missing-https-enforcement
+    pattern-either:
+      - pattern: |
+          $OPTIONS.AllowInsecureHttp = true
+      - pattern: |
+          $OPTIONS.SslPort = 0
+      - pattern: |
+          $OPTIONS.HttpsPort = 0
+      - pattern: |
+          listenOptions.UseHttps = false
+    message: >
+      HTTPS enforcement is disabled or weakened. Ensure
+      app.UseHttpsRedirection() is called in the middleware pipeline,
+      HSTS is enabled via app.UseHsts(), and Kestrel is not configured
+      to allow insecure HTTP connections in production. Transport
+      encryption is required to prevent eavesdropping and
+      man-in-the-middle attacks.
+    severity: WARNING
+    languages: [csharp]
+    metadata:
+      cwe: ["CWE-319", "CWE-523"]
+      owasp: ["A02:2021 Cryptographic Failures"]
+      confidence: MEDIUM
+      impact: HIGH
+      category: security

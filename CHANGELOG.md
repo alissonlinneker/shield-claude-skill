@@ -5,6 +5,22 @@ All notable changes to Shield will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-03-14
+
+### Added
+
+- **C# Semgrep rules** (`csharp.yaml`) — 10 security rules: SQL injection, command injection, XSS, insecure deserialization, hardcoded credentials, weak crypto, SSRF, open redirect, missing HTTPS
+- **jq check** in `check-prereqs.sh` — now validates 16 tools (was 15)
+- **Maven and Gradle** added to README prerequisites table
+
+### Fixed
+
+- CHANGELOG v0.3.0 rule count corrected from 72 to 82 (8 languages)
+- README package manager count corrected from 11 to 12 (includes Bun)
+- README Security Auditor comparison table rule count corrected to 82
+- README architecture section now lists `generate-badge.sh`
+- SKILL.md Step 1 now mentions jq, Trivy, and cargo-outdated as checked tools
+
 ## [0.3.0] - 2026-03-14
 
 ### Added
@@ -18,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Polyglot project detection** — `detect-stack.sh` now outputs `all_package_managers` JSON array alongside the primary `package_manager` field
 - **Extended tool checks** — `check-prereqs.sh` now validates 15 tools (was 7): added govulncheck, bundle-audit, cargo-audit, cargo-outdated, trivy, dotnet, maven, gradle
 - **Extended installer** — `install.sh` now installs govulncheck, bundle-audit, cargo-audit, cargo-outdated and checks for dotnet, maven, gradle
-- **72 Semgrep rules** across 7 languages (was 62 across 6): added `java.yaml` with 10 rules
+- **82 Semgrep rules** across 8 languages (was 62 across 6): added `go.yaml` (10), `ruby.yaml` (10), `rust.yaml` (8), `java.yaml` (10), `csharp.yaml` (10)
 
 ### Fixed
 
@@ -82,6 +98,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **189 unit tests** across 4 test suites (detect-stack, check-prereqs, consolidate, calculate-score)
 - 6 modes: full, quick, fix, verify, score, outdated
 
+[0.3.1]: https://github.com/alissonlinneker/shield-claude-skill/releases/tag/v0.3.1
 [0.3.0]: https://github.com/alissonlinneker/shield-claude-skill/releases/tag/v0.3.0
 [0.2.0]: https://github.com/alissonlinneker/shield-claude-skill/releases/tag/v0.2.0
 [0.1.1]: https://github.com/alissonlinneker/shield-claude-skill/releases/tag/v0.1.1

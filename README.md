@@ -9,7 +9,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
-  <a href="https://github.com/alissonlinneker/shield-claude-skill/releases"><img src="https://img.shields.io/badge/version-0.3.0-green.svg" alt="Version 0.3.0"></a>
+  <a href="https://github.com/alissonlinneker/shield-claude-skill/releases"><img src="https://img.shields.io/badge/version-0.3.1-green.svg" alt="Version 0.3.1"></a>
   <a href="docs/self-scan-report.md"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Falissonlinneker%2Fshield-claude-skill%2Fmain%2Fshield-badge.json&query=%24.message&label=Shield%20Score&color=brightgreen" alt="Shield Score"></a>
   <a href="https://github.com/alissonlinneker/shield-claude-skill/stargazers"><img src="https://img.shields.io/github/stars/alissonlinneker/shield-claude-skill?style=social" alt="GitHub Stars"></a>
 </p>
@@ -26,7 +26,7 @@ Shield detects your tech stack, runs every applicable security scanner in parall
                                 +-------------------+
                                 | Shannon Pentest   |  Proof-by-exploitation, real PoCs
                                 +-------------------+
-                                | Semgrep SAST      |  62 custom rules + community rulesets
+                                | Semgrep SAST      |  82 custom rules + community rulesets
 Your Code --> detect-stack.sh --| gitleaks Secrets   |  Full git history scan
                                 | Dependency Audit   |  npm / pip / composer audit
                                 | Freshness Check    |  Outdated dependency detection
@@ -72,9 +72,9 @@ claude --plugin-dir /path/to/shield-claude-skill
 | Category | Capability | Details |
 |----------|-----------|---------|
 | **Pentest** | Autonomous penetration testing | Full attack-surface analysis via Shannon -- proof-by-exploitation with real PoC payloads |
-| **SAST** | Static application security testing | Semgrep with 62 custom rules (12 JS/TS, 11 Python, 11 PHP, 10 Go, 10 Ruby, 8 Rust) plus community rulesets |
+| **SAST** | Static application security testing | Semgrep with 82 custom rules (12 JS/TS, 11 Python, 11 PHP, 10 Go, 10 Ruby, 8 Rust, 10 Java, 10 C#) plus community rulesets |
 | **Secrets** | Secrets scanning | gitleaks detection across entire git history -- keys, tokens, passwords |
-| **SCA** | Dependency vulnerability audit | Supports 11 package managers: npm, yarn, pnpm, pip, composer, govulncheck, bundle-audit, cargo-audit, Maven, Gradle, dotnet -- auto-detected by lock file |
+| **SCA** | Dependency vulnerability audit | Supports 12 package managers: npm, yarn, pnpm, bun, pip, composer, go, bundler, cargo, maven, gradle, dotnet -- auto-detected by lock file |
 | **Freshness** | Dependency outdated check | Detects packages behind on MAJOR, MINOR, and PATCH versions |
 | **Scoring** | Security scorecard | Weighted 0-100 risk score with severity breakdown |
 | **Remediation** | Fix proposals | Generates before/after diffs you can apply directly |
@@ -223,7 +223,7 @@ Or use the auditor standalone on any file — no scan needed:
 
 | Capability | `/shield:shield` | `/shield:audit` |
 |-----------|:-:|:-:|
-| Semgrep SAST (62 rules) | Runs the tool | Confirms, explains, provides full fix code |
+| Semgrep SAST (82 rules) | Runs the tool | Confirms, explains, provides full fix code |
 | Secrets (git history) | gitleaks scan | Inline + config file detection |
 | Dependency CVEs | npm/pip/composer audit | Explains exploitability context |
 | Autonomous pentest | Shannon | Manual reasoning layer |
@@ -271,6 +271,8 @@ Adjusted score:            55/100 — HIGH RISK
 | [cargo-audit](https://crates.io/crates/cargo-audit) | Auto-detected | Rust dependency audit | `cargo install cargo-audit` |
 | [cargo-outdated](https://crates.io/crates/cargo-outdated) | Auto-detected | Rust outdated check | `cargo install cargo-outdated` |
 | [dotnet](https://dotnet.microsoft.com/) | Auto-detected | C#/.NET dependency audit + freshness | `brew install dotnet` |
+| [Maven](https://maven.apache.org/) | Auto-detected | Java dependency audit + freshness | `brew install maven` |
+| [Gradle](https://gradle.org/) | Auto-detected | Java dependency audit + freshness | `brew install gradle` |
 
 > **Graceful degradation:** Shield runs whatever tools are installed. Missing a tool? Shield skips that scanner and notes it in the report. Install more tools later for deeper coverage.
 
@@ -512,10 +514,10 @@ Every finding is mapped to relevant compliance framework controls:
 | **Go** | Yes | govulncheck | go list -m -u | 10 rules |
 | **Ruby** (Bundler) | Yes | bundle-audit | bundle outdated | 10 rules |
 | **Rust** (Cargo) | Yes | cargo audit | cargo outdated | 8 rules |
-| **Java** (Maven/Gradle) | Yes | OWASP dependency-check | mvn versions / gradle dependencyUpdates | -- |
-| **C#** (.NET) | Yes | dotnet list --vulnerable | dotnet list --outdated | -- |
+| **Java** (Maven/Gradle) | Yes | OWASP dependency-check | mvn versions / gradle dependencyUpdates | 10 rules |
+| **C#** (.NET) | Yes | dotnet list --vulnerable | dotnet list --outdated | 10 rules |
 
-Stack detection, vulnerability auditing, and freshness checks work across all ecosystems listed above. Custom SAST rules are available for JavaScript/TypeScript, Python, PHP, Go, Ruby, and Rust (62 rules total). Java and C# use native tooling for audit and outdated checks.
+Stack detection, vulnerability auditing, and freshness checks work across all ecosystems listed above. Custom SAST rules are available for JavaScript/TypeScript, Python, PHP, Go, Ruby, Rust, Java, and C# (82 rules total).
 
 ## Architecture
 
@@ -534,9 +536,10 @@ scripts/
   setup-shannon.sh          # Initial Shannon installation helper
   consolidate.sh            # Merges + deduplicates findings, assigns SHIELD IDs
   calculate-score.sh        # Computes weighted risk score from findings
+  generate-badge.sh         # Creates shields.io badge JSON from scan results
 
 configs/
-  semgrep-rules/            # Custom Semgrep YAML rules (JS, Python, PHP, Go, Ruby, Rust)
+  semgrep-rules/            # Custom Semgrep YAML rules (JS, Python, PHP, Go, Ruby, Rust, Java, C#)
   shannon-templates/        # Pentest configs (web-app, SPA, API-only)
 
 templates/
@@ -659,6 +662,8 @@ configs/semgrep-rules/
   go.yaml           # 10 rules: SQLi, command injection, SSRF, insecure TLS, etc.
   ruby.yaml         # 10 rules: SQLi, mass assignment, open redirect, CSRF, etc.
   rust.yaml         #  8 rules: SQLi, command injection, unsafe blocks, weak random, etc.
+  java.yaml         # 10 rules: SQLi, command injection, XXE, deserialization, CSRF, etc.
+  csharp.yaml       # 10 rules: SQLi, command injection, XSS, deserialization, weak crypto, etc.
 ```
 
 Follow [Semgrep's rule syntax](https://semgrep.dev/docs/writing-rules/rule-syntax/) and include `cwe`, `owasp`, and `severity` metadata in each rule.
