@@ -11,7 +11,7 @@ set -euo pipefail
 #
 # Usage: run-outdated.sh <project-path> <package-manager> [--sca-file <path>]
 #
-# Supported package managers: npm, yarn, pnpm, pip, composer
+# Supported package managers: npm, yarn, pnpm, pip, composer, bundler, cargo, go, maven, gradle, dotnet
 
 PROJECT_PATH="${1:-}"
 PACKAGE_MANAGER="${2:-}"
@@ -40,7 +40,7 @@ if [[ ! -d "$PROJECT_PATH" ]]; then
 fi
 
 if [[ -z "$PACKAGE_MANAGER" ]]; then
-    echo "Error: package manager is required as second argument (npm|yarn|pnpm|pip|composer)" >&2
+    echo "Error: package manager is required as second argument (npm|yarn|pnpm|pip|composer|bundler|cargo|go|maven|gradle|dotnet)" >&2
     exit 1
 fi
 
@@ -505,7 +505,7 @@ run_pip_outdated() {
 
     if ! command -v pip >/dev/null 2>&1 && ! command -v pip3 >/dev/null 2>&1; then
         echo "Error: pip is not installed." >&2
-        printf '{"tool":"outdated-check","package_manager":"pip","outdated":[],"summary":{"total":0,"major":0,"minor":0,"patch":0},"error":"pip not installed"}\n'
+        printf '{"tool":"outdated-check","package_manager":"pip","outdated":[],"summary":{"total":0,"security":0,"major":0,"minor":0,"patch":0},"error":"pip not installed"}\n'
         return
     fi
 
@@ -605,7 +605,7 @@ run_composer_outdated() {
 
     if ! command -v composer >/dev/null 2>&1; then
         echo "Error: composer is not installed." >&2
-        printf '{"tool":"outdated-check","package_manager":"composer","outdated":[],"summary":{"total":0,"major":0,"minor":0,"patch":0},"error":"composer not installed"}\n'
+        printf '{"tool":"outdated-check","package_manager":"composer","outdated":[],"summary":{"total":0,"security":0,"major":0,"minor":0,"patch":0},"error":"composer not installed"}\n'
         return
     fi
 
@@ -726,6 +726,630 @@ run_composer_outdated() {
     fi
 }
 
+run_go_outdated() {
+    echo "Running go list -m -u in: $PROJECT_PATH" >&2
+
+    if ! command -v go >/dev/null 2>&1; then
+        echo "Error: go is not installed." >&2
+        printf '{"tool":"outdated-check","package_manager":"go","outdated":[],"summary":{"total":0,"security":0,"major":0,"minor":0,"patch":0},"error":"go not installed"}\n'
+        return
+    fi
+
+    local raw_output
+    raw_output="$(cd "$PROJECT_PATH" && go list -m -u -json all 2>/dev/null)" || true
+
+    if [[ -z "$raw_output" ]]; then
+        empty_result "outdated-check" "go" "go list produced no output"
+        return
+    fi
+
+    if has_jq; then
+        # go list -m -u -json outputs a stream of JSON objects (one per module).
+        # A module is outdated when it has an "Update" field and is not the Main module.
+        local outdated_json="[]"
+        local total=0
+        local security_count=0
+        local major_count=0
+        local minor_count=0
+        local patch_count=0
+
+        local modules
+        modules="$(echo "$raw_output" | jq -s '[.[] | select(.Main != true and .Update != null)] | .[] | @base64' -r)"
+
+        for entry in $modules; do
+            local pkg_name current latest
+            pkg_name="$(echo "$entry" | base64 -d 2>/dev/null | jq -r '.Path')"
+            current="$(echo "$entry" | base64 -d 2>/dev/null | jq -r '.Version // "unknown"')"
+            latest="$(echo "$entry" | base64 -d 2>/dev/null | jq -r '.Update.Version // "unknown"')"
+
+            local severity="UNKNOWN"
+            local behind="unknown"
+
+            if [[ "$current" != "unknown" && "$latest" != "unknown" ]]; then
+                severity="$(classify_with_security "$pkg_name" "$current" "$latest")"
+                behind="$(describe_behind "$current" "$latest")"
+            fi
+
+            total=$((total + 1))
+            case "$severity" in
+                SECURITY) security_count=$((security_count + 1)) ;;
+                MAJOR) major_count=$((major_count + 1)) ;;
+                MINOR) minor_count=$((minor_count + 1)) ;;
+                PATCH) patch_count=$((patch_count + 1)) ;;
+            esac
+
+            outdated_json="$(echo "$outdated_json" | jq \
+                --arg pkg "$pkg_name" \
+                --arg cur "$current" \
+                --arg wan "$current" \
+                --arg lat "$latest" \
+                --arg sev "$severity" \
+                --arg beh "$behind" \
+                '. + [{"package": $pkg, "current": $cur, "wanted": $wan, "latest": $lat, "severity": $sev, "behind": $beh}]'
+            )"
+        done
+
+        jq -n \
+            --argjson outdated "$outdated_json" \
+            --argjson total "$total" \
+            --argjson security "$security_count" \
+            --argjson major "$major_count" \
+            --argjson minor "$minor_count" \
+            --argjson patch "$patch_count" \
+            '{
+                "tool": "outdated-check",
+                "package_manager": "go",
+                "outdated": $outdated,
+                "summary": {
+                    "total": $total,
+                    "security": $security,
+                    "major": $major,
+                    "minor": $minor,
+                    "patch": $patch
+                }
+            }'
+    else
+        echo "$raw_output"
+    fi
+}
+
+run_bundle_outdated() {
+    echo "Running bundle outdated in: $PROJECT_PATH" >&2
+
+    if ! command -v bundle >/dev/null 2>&1; then
+        echo "Error: bundle is not installed." >&2
+        printf '{"tool":"outdated-check","package_manager":"bundler","outdated":[],"summary":{"total":0,"security":0,"major":0,"minor":0,"patch":0},"error":"bundle not installed"}\n'
+        return
+    fi
+
+    local raw_output
+    # bundle outdated returns exit code 1 when outdated gems exist
+    raw_output="$(cd "$PROJECT_PATH" && bundle outdated --parseable 2>/dev/null)" || true
+
+    if [[ -z "$raw_output" ]]; then
+        empty_result "outdated-check" "bundler" "all gems up to date or bundle outdated produced no output"
+        return
+    fi
+
+    if has_jq; then
+        # bundle outdated --parseable outputs one line per gem:
+        # gemname (newest X.Y.Z, installed A.B.C[, requested CONSTRAINT])
+        local outdated_json="[]"
+        local total=0
+        local security_count=0
+        local major_count=0
+        local minor_count=0
+        local patch_count=0
+
+        while IFS= read -r line; do
+            # Skip empty lines and lines that don't match the expected format
+            [[ -z "$line" ]] && continue
+
+            # Parse: "gemname (newest X.Y.Z, installed A.B.C[, requested ...])"
+            local pkg_name latest current
+            pkg_name="$(echo "$line" | sed -E 's/^([^ ]+) .*/\1/')"
+            latest="$(echo "$line" | sed -E 's/.*newest ([0-9][^ ,)]*).*/\1/')"
+            current="$(echo "$line" | sed -E 's/.*installed ([0-9][^ ,)]*).*/\1/')"
+
+            # Validate we got meaningful values
+            if [[ -z "$pkg_name" || "$pkg_name" == "$line" ]]; then
+                continue
+            fi
+            if [[ "$latest" == "$line" ]]; then
+                latest="unknown"
+            fi
+            if [[ "$current" == "$line" ]]; then
+                current="unknown"
+            fi
+
+            local severity="UNKNOWN"
+            local behind="unknown"
+
+            if [[ "$current" != "unknown" && "$latest" != "unknown" ]]; then
+                severity="$(classify_with_security "$pkg_name" "$current" "$latest")"
+                behind="$(describe_behind "$current" "$latest")"
+            fi
+
+            total=$((total + 1))
+            case "$severity" in
+                SECURITY) security_count=$((security_count + 1)) ;;
+                MAJOR) major_count=$((major_count + 1)) ;;
+                MINOR) minor_count=$((minor_count + 1)) ;;
+                PATCH) patch_count=$((patch_count + 1)) ;;
+            esac
+
+            outdated_json="$(echo "$outdated_json" | jq \
+                --arg pkg "$pkg_name" \
+                --arg cur "$current" \
+                --arg wan "$current" \
+                --arg lat "$latest" \
+                --arg sev "$severity" \
+                --arg beh "$behind" \
+                '. + [{"package": $pkg, "current": $cur, "wanted": $wan, "latest": $lat, "severity": $sev, "behind": $beh}]'
+            )"
+        done <<< "$raw_output"
+
+        jq -n \
+            --argjson outdated "$outdated_json" \
+            --argjson total "$total" \
+            --argjson security "$security_count" \
+            --argjson major "$major_count" \
+            --argjson minor "$minor_count" \
+            --argjson patch "$patch_count" \
+            '{
+                "tool": "outdated-check",
+                "package_manager": "bundler",
+                "outdated": $outdated,
+                "summary": {
+                    "total": $total,
+                    "security": $security,
+                    "major": $major,
+                    "minor": $minor,
+                    "patch": $patch
+                }
+            }'
+    else
+        echo "$raw_output"
+    fi
+}
+
+run_cargo_outdated() {
+    echo "Running cargo outdated in: $PROJECT_PATH" >&2
+
+    if ! command -v cargo >/dev/null 2>&1; then
+        echo "Error: cargo is not installed." >&2
+        printf '{"tool":"outdated-check","package_manager":"cargo","outdated":[],"summary":{"total":0,"security":0,"major":0,"minor":0,"patch":0},"error":"cargo not installed"}\n'
+        return
+    fi
+
+    # Check if cargo-outdated subcommand is available
+    if ! cargo outdated --help >/dev/null 2>&1; then
+        echo "Error: cargo-outdated is not installed. Install with: cargo install cargo-outdated" >&2
+        printf '{"tool":"outdated-check","package_manager":"cargo","outdated":[],"summary":{"total":0,"security":0,"major":0,"minor":0,"patch":0},"error":"cargo-outdated not installed"}\n'
+        return
+    fi
+
+    local raw_output
+    raw_output="$(cd "$PROJECT_PATH" && cargo outdated --format json 2>/dev/null)" || true
+
+    if ! is_valid_json "$raw_output"; then
+        # Fallback: try with -R flag (root dependencies only)
+        raw_output="$(cd "$PROJECT_PATH" && cargo outdated -R --format json 2>/dev/null)" || true
+    fi
+
+    if ! is_valid_json "$raw_output"; then
+        empty_result "outdated-check" "cargo" "cargo outdated produced no JSON output"
+        return
+    fi
+
+    if has_jq; then
+        # cargo outdated --format json returns:
+        # {"dependencies": [{"name": "...", "project": "current", "compat": "...", "latest": "..."}]}
+        local deps
+        deps="$(echo "$raw_output" | jq '.dependencies // []')"
+
+        local count
+        count="$(echo "$deps" | jq 'length')"
+        if [[ "$count" == "0" ]]; then
+            empty_result "outdated-check" "cargo" "all crates up to date"
+            return
+        fi
+
+        local outdated_json="[]"
+        local total=0
+        local security_count=0
+        local major_count=0
+        local minor_count=0
+        local patch_count=0
+
+        local packages
+        packages="$(echo "$deps" | jq -r '.[] | @base64')"
+
+        for entry in $packages; do
+            local pkg_name current compat latest
+            pkg_name="$(echo "$entry" | base64 -d 2>/dev/null | jq -r '.name')"
+            current="$(echo "$entry" | base64 -d 2>/dev/null | jq -r '.project // "unknown"')"
+            compat="$(echo "$entry" | base64 -d 2>/dev/null | jq -r '.compat // "---"')"
+            latest="$(echo "$entry" | base64 -d 2>/dev/null | jq -r '.latest // "---"')"
+
+            # Skip entries that are not truly outdated
+            if [[ "$latest" == "---" || "$current" == "$latest" ]]; then
+                continue
+            fi
+
+            local severity="UNKNOWN"
+            local behind="unknown"
+
+            if [[ "$current" != "unknown" && "$latest" != "unknown" ]]; then
+                severity="$(classify_with_security "$pkg_name" "$current" "$latest")"
+                behind="$(describe_behind "$current" "$latest")"
+            fi
+
+            # Use compat as the "wanted" version if available
+            local wanted="$current"
+            if [[ "$compat" != "---" ]]; then
+                wanted="$compat"
+            fi
+
+            total=$((total + 1))
+            case "$severity" in
+                SECURITY) security_count=$((security_count + 1)) ;;
+                MAJOR) major_count=$((major_count + 1)) ;;
+                MINOR) minor_count=$((minor_count + 1)) ;;
+                PATCH) patch_count=$((patch_count + 1)) ;;
+            esac
+
+            outdated_json="$(echo "$outdated_json" | jq \
+                --arg pkg "$pkg_name" \
+                --arg cur "$current" \
+                --arg wan "$wanted" \
+                --arg lat "$latest" \
+                --arg sev "$severity" \
+                --arg beh "$behind" \
+                '. + [{"package": $pkg, "current": $cur, "wanted": $wan, "latest": $lat, "severity": $sev, "behind": $beh}]'
+            )"
+        done
+
+        jq -n \
+            --argjson outdated "$outdated_json" \
+            --argjson total "$total" \
+            --argjson security "$security_count" \
+            --argjson major "$major_count" \
+            --argjson minor "$minor_count" \
+            --argjson patch "$patch_count" \
+            '{
+                "tool": "outdated-check",
+                "package_manager": "cargo",
+                "outdated": $outdated,
+                "summary": {
+                    "total": $total,
+                    "security": $security,
+                    "major": $major,
+                    "minor": $minor,
+                    "patch": $patch
+                }
+            }'
+    else
+        echo "$raw_output"
+    fi
+}
+
+run_maven_outdated() {
+    echo "Running Maven versions:display-dependency-updates in: $PROJECT_PATH" >&2
+
+    if ! command -v mvn >/dev/null 2>&1; then
+        echo "Error: mvn is not installed." >&2
+        printf '{"tool":"outdated-check","package_manager":"maven","outdated":[],"summary":{"total":0,"security":0,"major":0,"minor":0,"patch":0},"error":"mvn not installed"}\n'
+        return
+    fi
+
+    if [[ ! -f "$PROJECT_PATH/pom.xml" ]]; then
+        echo "Warning: pom.xml not found in $PROJECT_PATH" >&2
+        empty_result "outdated-check" "maven" "pom.xml not found"
+        return
+    fi
+
+    local raw_output
+    raw_output="$(cd "$PROJECT_PATH" && mvn versions:display-dependency-updates -DprocessDependencyManagement=false 2>/dev/null)" || true
+
+    if [[ -z "$raw_output" ]]; then
+        empty_result "outdated-check" "maven" "mvn versions:display-dependency-updates produced no output"
+        return
+    fi
+
+    if has_jq; then
+        # Parse text output: lines like "  groupId:artifactId ... current -> latest"
+        local outdated_json="[]"
+        local total=0
+        local security_count=0
+        local major_count=0
+        local minor_count=0
+        local patch_count=0
+
+        while IFS= read -r line; do
+            # Match lines with the pattern: "group:artifact ... current -> latest"
+            if [[ "$line" =~ ([a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+)[[:space:]].*[[:space:]]([0-9][0-9a-zA-Z._-]*)[[:space:]]*-\>[[:space:]]*([0-9][0-9a-zA-Z._-]*) ]]; then
+                local pkg_name="${BASH_REMATCH[1]}"
+                local current="${BASH_REMATCH[2]}"
+                local latest="${BASH_REMATCH[3]}"
+
+                local severity="UNKNOWN"
+                local behind="unknown"
+
+                if [[ "$current" != "unknown" && "$latest" != "unknown" ]]; then
+                    severity="$(classify_with_security "$pkg_name" "$current" "$latest")"
+                    behind="$(describe_behind "$current" "$latest")"
+                fi
+
+                total=$((total + 1))
+                case "$severity" in
+                    SECURITY) security_count=$((security_count + 1)) ;;
+                    MAJOR) major_count=$((major_count + 1)) ;;
+                    MINOR) minor_count=$((minor_count + 1)) ;;
+                    PATCH) patch_count=$((patch_count + 1)) ;;
+                esac
+
+                outdated_json="$(echo "$outdated_json" | jq \
+                    --arg pkg "$pkg_name" \
+                    --arg cur "$current" \
+                    --arg wan "$current" \
+                    --arg lat "$latest" \
+                    --arg sev "$severity" \
+                    --arg beh "$behind" \
+                    '. + [{"package": $pkg, "current": $cur, "wanted": $wan, "latest": $lat, "severity": $sev, "behind": $beh}]'
+                )"
+            fi
+        done <<< "$raw_output"
+
+        jq -n \
+            --argjson outdated "$outdated_json" \
+            --argjson total "$total" \
+            --argjson security "$security_count" \
+            --argjson major "$major_count" \
+            --argjson minor "$minor_count" \
+            --argjson patch "$patch_count" \
+            '{
+                "tool": "outdated-check",
+                "package_manager": "maven",
+                "outdated": $outdated,
+                "summary": {
+                    "total": $total,
+                    "security": $security,
+                    "major": $major,
+                    "minor": $minor,
+                    "patch": $patch
+                }
+            }'
+    else
+        # Without jq, output a basic JSON message
+        printf '{"tool":"outdated-check","package_manager":"maven","outdated":[],"summary":{"total":0,"security":0,"major":0,"minor":0,"patch":0},"note":"jq required for parsing Maven text output"}\n'
+    fi
+}
+
+run_gradle_outdated() {
+    echo "Running Gradle dependencyUpdates in: $PROJECT_PATH" >&2
+
+    if ! command -v gradle >/dev/null 2>&1; then
+        echo "Error: gradle is not installed." >&2
+        printf '{"tool":"outdated-check","package_manager":"gradle","outdated":[],"summary":{"total":0,"security":0,"major":0,"minor":0,"patch":0},"error":"gradle not installed"}\n'
+        return
+    fi
+
+    if [[ ! -f "$PROJECT_PATH/build.gradle" ]] && [[ ! -f "$PROJECT_PATH/build.gradle.kts" ]]; then
+        echo "Warning: build.gradle not found in $PROJECT_PATH" >&2
+        empty_result "outdated-check" "gradle" "build.gradle not found"
+        return
+    fi
+
+    local report_file="$PROJECT_PATH/build/dependencyUpdates/report.json"
+
+    # Run the gradle-versions-plugin task
+    if ! (cd "$PROJECT_PATH" && gradle dependencyUpdates -DoutputFormatter=json >&2 2>&1); then
+        echo "Warning: gradle dependencyUpdates failed — ensure the com.github.ben-manes.versions plugin is applied" >&2
+        printf '{"tool":"outdated-check","package_manager":"gradle","outdated":[],"summary":{"total":0,"security":0,"major":0,"minor":0,"patch":0},"note":"gradle-versions-plugin not configured — add com.github.ben-manes.versions plugin to build.gradle"}\n'
+        return
+    fi
+
+    if [[ ! -f "$report_file" ]]; then
+        empty_result "outdated-check" "gradle" "gradle dependencyUpdates report file not found"
+        return
+    fi
+
+    local raw_output
+    raw_output="$(cat "$report_file" 2>/dev/null)" || true
+
+    if ! is_valid_json "$raw_output"; then
+        empty_result "outdated-check" "gradle" "gradle dependencyUpdates produced no JSON output"
+        return
+    fi
+
+    if has_jq; then
+        local deps
+        deps="$(echo "$raw_output" | jq '.outdated.dependencies // []')"
+
+        local count
+        count="$(echo "$deps" | jq 'length')"
+        if [[ "$count" == "0" ]]; then
+            empty_result "outdated-check" "gradle" "all dependencies up to date"
+            return
+        fi
+
+        local outdated_json="[]"
+        local total=0
+        local security_count=0
+        local major_count=0
+        local minor_count=0
+        local patch_count=0
+
+        local packages
+        packages="$(echo "$deps" | jq -r '.[] | @base64')"
+
+        for entry in $packages; do
+            local group name current latest pkg_name
+            group="$(echo "$entry" | base64 -d 2>/dev/null | jq -r '.group // ""')"
+            name="$(echo "$entry" | base64 -d 2>/dev/null | jq -r '.name // ""')"
+            current="$(echo "$entry" | base64 -d 2>/dev/null | jq -r '.version // "unknown"')"
+            latest="$(echo "$entry" | base64 -d 2>/dev/null | jq -r '.available.release // .available.milestone // "unknown"')"
+            pkg_name="${group}:${name}"
+
+            local severity="UNKNOWN"
+            local behind="unknown"
+
+            if [[ "$current" != "unknown" && "$latest" != "unknown" ]]; then
+                severity="$(classify_with_security "$pkg_name" "$current" "$latest")"
+                behind="$(describe_behind "$current" "$latest")"
+            fi
+
+            total=$((total + 1))
+            case "$severity" in
+                SECURITY) security_count=$((security_count + 1)) ;;
+                MAJOR) major_count=$((major_count + 1)) ;;
+                MINOR) minor_count=$((minor_count + 1)) ;;
+                PATCH) patch_count=$((patch_count + 1)) ;;
+            esac
+
+            outdated_json="$(echo "$outdated_json" | jq \
+                --arg pkg "$pkg_name" \
+                --arg cur "$current" \
+                --arg wan "$current" \
+                --arg lat "$latest" \
+                --arg sev "$severity" \
+                --arg beh "$behind" \
+                '. + [{"package": $pkg, "current": $cur, "wanted": $wan, "latest": $lat, "severity": $sev, "behind": $beh}]'
+            )"
+        done
+
+        jq -n \
+            --argjson outdated "$outdated_json" \
+            --argjson total "$total" \
+            --argjson security "$security_count" \
+            --argjson major "$major_count" \
+            --argjson minor "$minor_count" \
+            --argjson patch "$patch_count" \
+            '{
+                "tool": "outdated-check",
+                "package_manager": "gradle",
+                "outdated": $outdated,
+                "summary": {
+                    "total": $total,
+                    "security": $security,
+                    "major": $major,
+                    "minor": $minor,
+                    "patch": $patch
+                }
+            }'
+    else
+        echo "$raw_output"
+    fi
+}
+
+run_dotnet_outdated() {
+    echo "Running dotnet list package --outdated in: $PROJECT_PATH" >&2
+
+    if ! command -v dotnet >/dev/null 2>&1; then
+        echo "Error: dotnet is not installed." >&2
+        printf '{"tool":"outdated-check","package_manager":"dotnet","outdated":[],"summary":{"total":0,"security":0,"major":0,"minor":0,"patch":0},"error":"dotnet not installed"}\n'
+        return
+    fi
+
+    local raw_output
+    raw_output="$(cd "$PROJECT_PATH" && dotnet list package --outdated --include-transitive --format json 2>/dev/null)" || true
+
+    if ! is_valid_json "$raw_output"; then
+        empty_result "outdated-check" "dotnet" "dotnet list package --outdated produced no JSON output"
+        return
+    fi
+
+    if has_jq; then
+        # dotnet list package --outdated --format json returns:
+        # { "projects": [{ "frameworks": [{ "topLevelPackages": [...], "transitivePackages": [...] }] }] }
+        # Each package has: id, resolvedVersion, latestVersion
+        local outdated_json="[]"
+        local total=0
+        local security_count=0
+        local major_count=0
+        local minor_count=0
+        local patch_count=0
+
+        local packages
+        packages="$(echo "$raw_output" | jq -r '
+            [
+                .projects // [] | .[] |
+                .frameworks // [] | .[] |
+                (
+                    (.topLevelPackages // []) + (.transitivePackages // [])
+                ) | .[] |
+                select(.latestVersion != null)
+            ] | .[] | @base64
+        ')" || true
+
+        if [[ -z "$packages" ]]; then
+            empty_result "outdated-check" "dotnet" "all packages up to date"
+            return
+        fi
+
+        for entry in $packages; do
+            local pkg_name current latest
+            pkg_name="$(echo "$entry" | base64 -d 2>/dev/null | jq -r '.id // "unknown"')"
+            current="$(echo "$entry" | base64 -d 2>/dev/null | jq -r '.resolvedVersion // "unknown"')"
+            latest="$(echo "$entry" | base64 -d 2>/dev/null | jq -r '.latestVersion // "unknown"')"
+
+            # Skip if current and latest are the same
+            if [[ "$current" == "$latest" ]]; then
+                continue
+            fi
+
+            local severity="UNKNOWN"
+            local behind="unknown"
+
+            if [[ "$current" != "unknown" && "$latest" != "unknown" ]]; then
+                severity="$(classify_with_security "$pkg_name" "$current" "$latest")"
+                behind="$(describe_behind "$current" "$latest")"
+            fi
+
+            total=$((total + 1))
+            case "$severity" in
+                SECURITY) security_count=$((security_count + 1)) ;;
+                MAJOR) major_count=$((major_count + 1)) ;;
+                MINOR) minor_count=$((minor_count + 1)) ;;
+                PATCH) patch_count=$((patch_count + 1)) ;;
+            esac
+
+            outdated_json="$(echo "$outdated_json" | jq \
+                --arg pkg "$pkg_name" \
+                --arg cur "$current" \
+                --arg wan "$current" \
+                --arg lat "$latest" \
+                --arg sev "$severity" \
+                --arg beh "$behind" \
+                '. + [{"package": $pkg, "current": $cur, "wanted": $wan, "latest": $lat, "severity": $sev, "behind": $beh}]'
+            )"
+        done
+
+        jq -n \
+            --argjson outdated "$outdated_json" \
+            --argjson total "$total" \
+            --argjson security "$security_count" \
+            --argjson major "$major_count" \
+            --argjson minor "$minor_count" \
+            --argjson patch "$patch_count" \
+            '{
+                "tool": "outdated-check",
+                "package_manager": "dotnet",
+                "outdated": $outdated,
+                "summary": {
+                    "total": $total,
+                    "security": $security,
+                    "major": $major,
+                    "minor": $minor,
+                    "patch": $patch
+                }
+            }'
+    else
+        echo "$raw_output"
+    fi
+}
+
 # --- Main ---
 
 case "$PACKAGE_MANAGER" in
@@ -744,10 +1368,31 @@ case "$PACKAGE_MANAGER" in
     composer)
         run_composer_outdated
         ;;
+    bundler)
+        run_bundle_outdated
+        ;;
+    cargo)
+        run_cargo_outdated
+        ;;
+    go)
+        run_go_outdated
+        ;;
+    maven)
+        run_maven_outdated
+        ;;
+    gradle)
+        run_gradle_outdated
+        ;;
+    dotnet)
+        run_dotnet_outdated
+        ;;
+    bun)
+        echo "Note: Bun does not have a native outdated command." >&2
+        printf '{"tool":"outdated-check","package_manager":"bun","outdated":[],"summary":{"total":0,"security":0,"major":0,"minor":0,"patch":0},"note":"bun has no native outdated command — consider using npm outdated as fallback"}\n'
+        ;;
     *)
-        echo "Error: Unsupported package manager: $PACKAGE_MANAGER" >&2
-        echo "Supported: npm, yarn, pnpm, pip, composer" >&2
-        printf '{"tool":"outdated-check","package_manager":"%s","outdated":[],"summary":{"total":0,"major":0,"minor":0,"patch":0},"error":"unsupported package manager"}\n' "$PACKAGE_MANAGER"
-        exit 1
+        echo "Warning: Unsupported package manager: $PACKAGE_MANAGER" >&2
+        echo "Supported: npm, yarn, pnpm, pip, composer, bundler, cargo, go, maven, gradle, dotnet, bun" >&2
+        printf '{"tool":"outdated-check","package_manager":"%s","outdated":[],"summary":{"total":0,"security":0,"major":0,"minor":0,"patch":0},"error":"unsupported package manager"}\n' "$PACKAGE_MANAGER"
         ;;
 esac

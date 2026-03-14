@@ -1,0 +1,274 @@
+rules:
+  # ---------------------------------------------------------------------------
+  # SQL Injection
+  # ---------------------------------------------------------------------------
+  - id: ruby-sql-injection
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $MODEL.where("...#{$INPUT}...")
+          - pattern: |
+              $MODEL.find_by_sql("...#{$INPUT}...")
+          - pattern: |
+              $CONN.execute("...#{$INPUT}...")
+          - pattern: |
+              $MODEL.where("..." + $INPUT + "...")
+          - pattern: |
+              ActiveRecord::Base.connection.execute("...#{$INPUT}...")
+    message: >
+      SQL query built with string interpolation or concatenation. Use
+      parameterized queries (e.g., where("name = ?", input)) or hash
+      conditions (where(name: input)) to prevent SQL injection.
+    severity: ERROR
+    languages: [ruby]
+    metadata:
+      cwe: ["CWE-89"]
+      owasp: ["A03:2021 Injection"]
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Command Injection
+  # ---------------------------------------------------------------------------
+  - id: ruby-command-injection
+    patterns:
+      - pattern-either:
+          - pattern: |
+              system("...#{$INPUT}...")
+          - pattern: |
+              exec("...#{$INPUT}...")
+          - pattern: |
+              `...#{$INPUT}...`
+          - pattern: |
+              %x(...#{$INPUT}...)
+          - pattern: |
+              IO.popen("...#{$INPUT}...")
+          - pattern: |
+              Kernel.system("...#{$INPUT}...")
+    message: >
+      Shell command executed with interpolated user input. Use
+      parameterized forms like system("cmd", arg1, arg2) that bypass
+      shell interpretation, or use Shellwords.shellescape on each argument.
+    severity: ERROR
+    languages: [ruby]
+    metadata:
+      cwe: ["CWE-78"]
+      owasp: ["A03:2021 Injection"]
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Mass Assignment
+  # ---------------------------------------------------------------------------
+  - id: ruby-mass-assignment
+    patterns:
+      - pattern-either:
+          - pattern: |
+              params.permit!
+          - pattern: |
+              $MODEL.update(params)
+          - pattern: |
+              $MODEL.new(params)
+          - pattern: |
+              $MODEL.create(params)
+          - pattern: |
+              $MODEL.update_attributes(params)
+    message: >
+      Mass assignment without strong parameters allows attackers to set
+      arbitrary model attributes. Always use params.require(:model).permit(:field1, :field2)
+      to whitelist allowed attributes.
+    severity: ERROR
+    languages: [ruby]
+    metadata:
+      cwe: ["CWE-915"]
+      owasp: ["A04:2021 Insecure Design"]
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Open Redirect
+  # ---------------------------------------------------------------------------
+  - id: ruby-open-redirect
+    patterns:
+      - pattern-either:
+          - pattern: |
+              redirect_to params[...]
+          - pattern: |
+              redirect_to $INPUT
+      - metavariable-pattern:
+          metavariable: $INPUT
+          patterns:
+            - pattern-not: "..."
+    message: >
+      redirect_to with user-controlled input may allow open redirect
+      attacks. Validate that the redirect URL belongs to your application
+      domain, or use a relative path. Consider using only_path: true.
+    severity: WARNING
+    languages: [ruby]
+    metadata:
+      cwe: ["CWE-601"]
+      owasp: ["A01:2021 Broken Access Control"]
+      confidence: MEDIUM
+      impact: MEDIUM
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # XSS
+  # ---------------------------------------------------------------------------
+  - id: ruby-xss-html-safe
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $INPUT.html_safe
+          - pattern: |
+              raw($INPUT)
+          - pattern: |
+              raw $INPUT
+      - metavariable-pattern:
+          metavariable: $INPUT
+          patterns:
+            - pattern-not: "..."
+    message: >
+      Marking user-controlled data as html_safe or using raw() disables
+      Rails automatic HTML escaping and can lead to XSS. Sanitize the
+      input with sanitize() or let Rails auto-escape by default.
+    severity: WARNING
+    languages: [ruby]
+    metadata:
+      cwe: ["CWE-79"]
+      owasp: ["A03:2021 Injection"]
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Insecure Deserialization
+  # ---------------------------------------------------------------------------
+  - id: ruby-insecure-deserialization
+    patterns:
+      - pattern-either:
+          - pattern: |
+              YAML.load($DATA)
+          - pattern: |
+              YAML.load($DATA, ...)
+          - pattern: |
+              Marshal.load($DATA)
+          - pattern: |
+              Marshal.restore($DATA)
+      - pattern-not: |
+          YAML.load($DATA, permitted_classes: ...)
+    message: >
+      YAML.load and Marshal.load can instantiate arbitrary Ruby objects,
+      leading to remote code execution. Use YAML.safe_load or
+      JSON.parse for untrusted data. Avoid Marshal entirely for
+      external input.
+    severity: ERROR
+    languages: [ruby]
+    metadata:
+      cwe: ["CWE-502"]
+      owasp: ["A08:2021 Software and Data Integrity Failures"]
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Hardcoded Secrets
+  # ---------------------------------------------------------------------------
+  - id: ruby-hardcoded-secrets
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $X = "..."
+      - metavariable-regex:
+          metavariable: $X
+          regex: (?i)(secret_key_base|api_key|apikey|secret_key|password|passwd|token|secret)
+    message: >
+      Hardcoded secret detected in string literal assignment.
+      Store secrets in environment variables (ENV["KEY"]),
+      Rails credentials (rails credentials:edit), or a secrets manager.
+    severity: ERROR
+    languages: [ruby]
+    metadata:
+      cwe: ["CWE-798"]
+      owasp: ["A07:2021 Identification and Authentication Failures"]
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # File Access / Path Traversal
+  # ---------------------------------------------------------------------------
+  - id: ruby-path-traversal
+    patterns:
+      - pattern-either:
+          - pattern: |
+              File.read($PATH)
+          - pattern: |
+              File.open($PATH, ...)
+          - pattern: |
+              IO.read($PATH)
+          - pattern: |
+              File.readlines($PATH)
+      - metavariable-pattern:
+          metavariable: $PATH
+          patterns:
+            - pattern-not: "..."
+    message: >
+      File operation with a potentially user-controlled path may allow
+      path traversal. Validate the resolved path stays within the
+      intended directory using File.expand_path and a prefix check.
+    severity: WARNING
+    languages: [ruby]
+    metadata:
+      cwe: ["CWE-22"]
+      owasp: ["A01:2021 Broken Access Control"]
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # CSRF Disabled
+  # ---------------------------------------------------------------------------
+  - id: ruby-csrf-disabled
+    pattern: |
+      skip_before_action :verify_authenticity_token
+    message: >
+      CSRF protection is explicitly disabled for this controller or action.
+      This allows cross-site request forgery attacks. Only skip CSRF
+      verification for API endpoints that use token-based authentication.
+    severity: WARNING
+    languages: [ruby]
+    metadata:
+      cwe: ["CWE-352"]
+      owasp: ["A01:2021 Broken Access Control"]
+      confidence: HIGH
+      impact: MEDIUM
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Weak Session Configuration
+  # ---------------------------------------------------------------------------
+  - id: ruby-weak-session-config
+    patterns:
+      - pattern-either:
+          - pattern: |
+              config.session_store :cookie_store
+          - pattern: |
+              config.session_store :cookie_store, ...
+      - pattern-not: |
+          config.session_store :cookie_store, ..., secure: true, ...
+    message: >
+      Cookie-based session store configured without explicit secure flags.
+      Set secure: true, httponly: true, and same_site: :lax (or :strict)
+      to protect session cookies from interception and CSRF.
+    severity: WARNING
+    languages: [ruby]
+    metadata:
+      cwe: ["CWE-614"]
+      owasp: ["A07:2021 Identification and Authentication Failures"]
+      confidence: MEDIUM
+      impact: MEDIUM
+      category: security

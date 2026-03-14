@@ -23,7 +23,7 @@ print_banner() {
     echo -e "${BOLD}"
     echo "╔═══════════════════════════════════════════╗"
     echo "║          Shield — Install Script          ║"
-    echo "║       Security Orchestrator v0.2.0        ║"
+    echo "║       Security Orchestrator v0.3.0        ║"
     echo "╚═══════════════════════════════════════════╝"
     echo -e "${NC}"
 }
@@ -393,6 +393,151 @@ check_composer() {
     ((SKIPPED++))
 }
 
+install_govulncheck() {
+    log_info "Checking govulncheck (Go vulnerability scanner)..."
+    if check_command govulncheck; then
+        log_success "govulncheck already installed"
+        record_status "govulncheck" "installed" ""
+        ((SKIPPED++))
+        return
+    fi
+
+    if check_command go; then
+        log_info "Installing govulncheck..."
+        if go install golang.org/x/vuln/cmd/govulncheck@latest 2>/dev/null; then
+            log_success "govulncheck installed via go install"
+            record_status "govulncheck" "installed" "via go install"
+            ((INSTALLED++))
+            return
+        fi
+    fi
+
+    log_warn "Could not install govulncheck. Requires Go. Install Go: https://go.dev/dl/"
+    record_status "govulncheck" "missing" "optional — needs Go"
+    ((FAILED++))
+}
+
+install_bundle_audit() {
+    log_info "Checking bundle-audit (Ruby dependency auditor)..."
+    if check_command bundle-audit; then
+        local version
+        version=$(bundle-audit version 2>/dev/null || echo "unknown")
+        log_success "bundle-audit already installed (${version})"
+        record_status "bundle-audit" "installed" "${version}"
+        ((SKIPPED++))
+        return
+    fi
+
+    if check_command gem; then
+        log_info "Installing bundle-audit..."
+        if gem install bundler-audit 2>/dev/null; then
+            log_success "bundle-audit installed via gem"
+            record_status "bundle-audit" "installed" "via gem"
+            ((INSTALLED++))
+            return
+        fi
+    fi
+
+    log_warn "Could not install bundle-audit. Requires Ruby/gem. Install Ruby: https://www.ruby-lang.org/"
+    record_status "bundle-audit" "missing" "optional — needs Ruby"
+    ((FAILED++))
+}
+
+install_cargo_audit() {
+    log_info "Checking cargo-audit (Rust dependency auditor)..."
+    if check_command cargo-audit; then
+        local version
+        version=$(cargo audit --version 2>/dev/null || echo "unknown")
+        log_success "cargo-audit already installed (${version})"
+        record_status "cargo-audit" "installed" "${version}"
+        ((SKIPPED++))
+        return
+    fi
+
+    if check_command cargo; then
+        log_info "Installing cargo-audit..."
+        if cargo install cargo-audit 2>/dev/null; then
+            log_success "cargo-audit installed via cargo"
+            record_status "cargo-audit" "installed" "via cargo"
+            ((INSTALLED++))
+            return
+        fi
+    fi
+
+    log_warn "Could not install cargo-audit. Requires Rust/Cargo. Install Rust: https://rustup.rs/"
+    record_status "cargo-audit" "missing" "optional — needs Rust"
+    ((FAILED++))
+}
+
+install_cargo_outdated() {
+    log_info "Checking cargo-outdated (Rust outdated checker)..."
+    if check_command cargo-outdated; then
+        log_success "cargo-outdated already installed"
+        record_status "cargo-outdated" "installed" ""
+        ((SKIPPED++))
+        return
+    fi
+
+    if check_command cargo; then
+        log_info "Installing cargo-outdated..."
+        if cargo install cargo-outdated 2>/dev/null; then
+            log_success "cargo-outdated installed via cargo"
+            record_status "cargo-outdated" "installed" "via cargo"
+            ((INSTALLED++))
+            return
+        fi
+    fi
+
+    log_warn "Could not install cargo-outdated. Requires Rust/Cargo. Install Rust: https://rustup.rs/"
+    record_status "cargo-outdated" "missing" "optional — needs Rust"
+    ((FAILED++))
+}
+
+check_dotnet() {
+    log_info "Checking .NET SDK (dotnet dependency auditor)..."
+    if check_command dotnet; then
+        local version
+        version=$(dotnet --version 2>/dev/null || echo "unknown")
+        log_success ".NET SDK is available (${version})"
+        record_status "dotnet" "installed" "${version}"
+    else
+        log_info "dotnet not found — skipping (only needed for .NET projects)"
+        log_info "Install from: https://dotnet.microsoft.com/download"
+        record_status "dotnet" "skipped" "not needed if no .NET"
+    fi
+    ((SKIPPED++))
+}
+
+check_maven() {
+    log_info "Checking Maven (Java build tool)..."
+    if check_command mvn; then
+        local version
+        version=$(mvn --version 2>/dev/null | head -1 || echo "unknown")
+        log_success "Maven is available (${version})"
+        record_status "Maven" "installed" "${version}"
+    else
+        log_info "Maven not found — skipping (only needed for Java/Maven projects)"
+        log_info "Install from: https://maven.apache.org/install.html"
+        record_status "Maven" "skipped" "not needed if no Java"
+    fi
+    ((SKIPPED++))
+}
+
+check_gradle() {
+    log_info "Checking Gradle (Java build tool)..."
+    if check_command gradle; then
+        local version
+        version=$(gradle --version 2>/dev/null | grep Gradle | head -1 || echo "unknown")
+        log_success "Gradle is available (${version})"
+        record_status "Gradle" "installed" "${version}"
+    else
+        log_info "Gradle not found — skipping (only needed for Java/Gradle projects)"
+        log_info "Install from: https://gradle.org/install/"
+        record_status "Gradle" "skipped" "not needed if no Java"
+    fi
+    ((SKIPPED++))
+}
+
 print_summary() {
     echo ""
     echo -e "${BOLD}╔═══════════════════════════════════════════╗${NC}"
@@ -419,7 +564,7 @@ print_summary() {
     echo ""
 
     if [[ "$FAILED" -eq 0 ]]; then
-        echo -e "${GREEN}${BOLD}All tools are ready. Run /shield full to start your first scan.${NC}"
+        echo -e "${GREEN}${BOLD}All tools are ready. Run /shield:shield full to start your first scan.${NC}"
     else
         echo -e "${YELLOW}${BOLD}Some optional tools are missing. Shield will run with available tools.${NC}"
         echo -e "Install missing tools for broader coverage."
@@ -472,6 +617,24 @@ main() {
     check_node
     echo ""
     check_composer
+    echo ""
+
+    # Go, Ruby, Rust tools
+    install_govulncheck
+    echo ""
+    install_bundle_audit
+    echo ""
+    install_cargo_audit
+    echo ""
+    install_cargo_outdated
+    echo ""
+
+    # Heavy runtimes (check only, no auto-install)
+    check_dotnet
+    echo ""
+    check_maven
+    echo ""
+    check_gradle
 
     # Summary
     print_summary

@@ -1,0 +1,297 @@
+rules:
+  # ---------------------------------------------------------------------------
+  # SQL Injection
+  # ---------------------------------------------------------------------------
+  - id: go-sql-injection
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $DB.Query("..." + $INPUT + "...", ...)
+          - pattern: |
+              $DB.QueryRow("..." + $INPUT + "...", ...)
+          - pattern: |
+              $DB.Exec("..." + $INPUT + "...", ...)
+          - pattern: |
+              $DB.Query(fmt.Sprintf("...", $INPUT), ...)
+          - pattern: |
+              $DB.QueryRow(fmt.Sprintf("...", $INPUT), ...)
+          - pattern: |
+              $DB.Exec(fmt.Sprintf("...", $INPUT), ...)
+    message: >
+      SQL query built with string concatenation or fmt.Sprintf. Use
+      parameterized queries with placeholder arguments (e.g., db.Query("SELECT
+      ... WHERE id = ?", id)) to prevent SQL injection.
+    severity: ERROR
+    languages: [go]
+    metadata:
+      cwe: ["CWE-89"]
+      owasp: ["A03:2021 Injection"]
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Command Injection
+  # ---------------------------------------------------------------------------
+  - id: go-command-injection
+    patterns:
+      - pattern-either:
+          - pattern: |
+              exec.Command($CMD, ...)
+          - pattern: |
+              exec.CommandContext($CTX, $CMD, ...)
+      - metavariable-pattern:
+          metavariable: $CMD
+          patterns:
+            - pattern-not: "..."
+    message: >
+      os/exec.Command called with a potentially user-controlled command name
+      or arguments. Validate and sanitize all input before passing it to
+      Command. Prefer a hardcoded command name with a strict allowlist
+      for arguments.
+    severity: ERROR
+    languages: [go]
+    metadata:
+      cwe: ["CWE-78"]
+      owasp: ["A03:2021 Injection"]
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Path Traversal
+  # ---------------------------------------------------------------------------
+  - id: go-path-traversal
+    patterns:
+      - pattern-either:
+          - pattern: |
+              os.Open($PATH)
+          - pattern: |
+              os.ReadFile($PATH)
+          - pattern: |
+              os.OpenFile($PATH, ...)
+          - pattern: |
+              filepath.Join($BASE, $PATH)
+          - pattern: |
+              ioutil.ReadFile($PATH)
+      - metavariable-pattern:
+          metavariable: $PATH
+          patterns:
+            - pattern-not: "..."
+    message: >
+      File operation with a potentially user-controlled path. Resolve
+      the path with filepath.Clean and verify it stays within the intended
+      base directory using filepath.Rel or strings.HasPrefix after
+      cleaning to prevent path traversal attacks.
+    severity: WARNING
+    languages: [go]
+    metadata:
+      cwe: ["CWE-22"]
+      owasp: ["A01:2021 Broken Access Control"]
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # SSRF
+  # ---------------------------------------------------------------------------
+  - id: go-ssrf
+    patterns:
+      - pattern-either:
+          - pattern: |
+              http.Get($URL)
+          - pattern: |
+              http.Post($URL, ...)
+          - pattern: |
+              http.PostForm($URL, ...)
+          - pattern: |
+              $CLIENT.Get($URL)
+          - pattern: |
+              $CLIENT.Post($URL, ...)
+      - metavariable-pattern:
+          metavariable: $URL
+          patterns:
+            - pattern-not: "..."
+    message: >
+      HTTP request with a potentially user-controlled URL may enable
+      server-side request forgery (SSRF). Validate the URL against an
+      allowlist and block requests to internal or private IP ranges
+      before making the request.
+    severity: WARNING
+    languages: [go]
+    metadata:
+      cwe: ["CWE-918"]
+      owasp: ["A10:2021 SSRF"]
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Hardcoded Credentials
+  # ---------------------------------------------------------------------------
+  - id: go-hardcoded-credentials
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $X := "..."
+          - pattern: |
+              var $X = "..."
+          - pattern: |
+              const $X = "..."
+      - metavariable-regex:
+          metavariable: $X
+          regex: (?i)(password|passwd|secret|api_key|apikey|token|secret_key|secretkey)
+    message: >
+      Hardcoded credential detected in a string literal assignment.
+      Store secrets in environment variables, a secrets manager, or
+      encrypted configuration — never in source code.
+    severity: ERROR
+    languages: [go]
+    metadata:
+      cwe: ["CWE-798"]
+      owasp: ["A07:2021 Identification and Authentication Failures"]
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Weak Crypto
+  # ---------------------------------------------------------------------------
+  - id: go-weak-crypto
+    patterns:
+      - pattern-either:
+          - pattern: |
+              md5.New()
+          - pattern: |
+              md5.Sum(...)
+          - pattern: |
+              sha1.New()
+          - pattern: |
+              sha1.Sum(...)
+    message: >
+      MD5 and SHA1 are cryptographically broken and must not be used for
+      hashing passwords, signatures, or integrity checks. Use SHA-256,
+      SHA-512, or bcrypt/argon2 for passwords.
+    severity: WARNING
+    languages: [go]
+    metadata:
+      cwe: ["CWE-328"]
+      owasp: ["A02:2021 Cryptographic Failures"]
+      confidence: HIGH
+      impact: MEDIUM
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Insecure TLS
+  # ---------------------------------------------------------------------------
+  - id: go-insecure-tls
+    pattern: |
+      tls.Config{..., InsecureSkipVerify: true, ...}
+    message: >
+      TLS certificate verification is disabled with InsecureSkipVerify.
+      This allows man-in-the-middle attacks. Remove this option or
+      restrict it to development environments only.
+    severity: ERROR
+    languages: [go]
+    metadata:
+      cwe: ["CWE-295"]
+      owasp: ["A02:2021 Cryptographic Failures"]
+      confidence: HIGH
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Unhandled Error
+  # ---------------------------------------------------------------------------
+  - id: go-unhandled-error
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $RESULT, _ := $DB.Query(...)
+          - pattern: |
+              $RESULT, _ := $DB.QueryRow(...).Scan(...)
+          - pattern: |
+              $RESULT, _ := $DB.Exec(...)
+          - pattern: |
+              $RESP, _ := http.Get(...)
+          - pattern: |
+              $RESP, _ := http.Post(...)
+          - pattern: |
+              $RESP, _ := $CLIENT.Do(...)
+          - pattern: |
+              _, _ = $DB.Exec(...)
+    message: >
+      Error return value discarded with blank identifier in a database or
+      HTTP operation. Unhandled errors can mask failures, data corruption,
+      or security issues. Always check and handle the error.
+    severity: WARNING
+    languages: [go]
+    metadata:
+      cwe: ["CWE-754"]
+      owasp: ["A04:2021 Insecure Design"]
+      confidence: MEDIUM
+      impact: MEDIUM
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Open Redirect
+  # ---------------------------------------------------------------------------
+  - id: go-open-redirect
+    patterns:
+      - pattern-either:
+          - pattern: |
+              http.Redirect($W, $R, $URL, ...)
+      - metavariable-pattern:
+          metavariable: $URL
+          patterns:
+            - pattern-not: "..."
+    message: >
+      http.Redirect with a potentially user-controlled URL may allow
+      open redirect attacks. Validate that the redirect target is a
+      relative path or belongs to an allowlisted domain before redirecting.
+    severity: WARNING
+    languages: [go]
+    metadata:
+      cwe: ["CWE-601"]
+      owasp: ["A01:2021 Broken Access Control"]
+      confidence: MEDIUM
+      impact: MEDIUM
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Race Condition
+  # ---------------------------------------------------------------------------
+  - id: go-race-condition-goroutine
+    patterns:
+      - pattern-either:
+          - pattern: |
+              go func() {
+                ...
+                $X = ...
+                ...
+              }(...)
+          - pattern: |
+              go func() {
+                ...
+                $X += ...
+                ...
+              }(...)
+          - pattern: |
+              go func() {
+                ...
+                $X++
+                ...
+              }(...)
+    message: >
+      Shared variable modified inside a goroutine without synchronization.
+      This can cause data races. Protect access with sync.Mutex,
+      sync.RWMutex, or use channels for safe communication between
+      goroutines.
+    severity: WARNING
+    languages: [go]
+    metadata:
+      cwe: ["CWE-362"]
+      owasp: ["A04:2021 Insecure Design"]
+      confidence: LOW
+      impact: MEDIUM
+      category: security

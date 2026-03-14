@@ -38,7 +38,7 @@ The Shield project itself achieves a perfect score because:
 - **No hardcoded secrets.** The project contains no API keys, tokens, or credentials. All tool invocations use environment-provided credentials.
 - **No vulnerable dependencies.** The package.json exists solely for metadata (`npm test`, `npm run lint`) with zero runtime dependencies.
 - **No SAST findings.** The codebase consists of shell scripts, YAML configs, and markdown templates. Semgrep found no injection, XSS, or other vulnerabilities.
-- **Shellcheck-clean.** All 11 scripts pass shellcheck at warning severity with zero issues.
+- **Shellcheck-clean.** All 12 scripts pass shellcheck at warning severity with zero issues.
 - **189 unit tests.** Comprehensive test coverage for all core scripts.
 
 ## How to Reproduce

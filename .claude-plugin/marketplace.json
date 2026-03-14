@@ -7,7 +7,7 @@
     {
       "name": "shield",
       "description": "Security orchestrator — autonomous pentests, SAST, secrets scanning, dependency audits, and outdated checks with risk scoring and fix proposals.",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "source": "./"
     }
   ]

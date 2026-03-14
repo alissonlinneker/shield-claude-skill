@@ -226,6 +226,12 @@ detect_package_manager() {
         echo "composer"
     elif [[ -f "$PROJECT_PATH/Gemfile.lock" ]] || [[ -f "$PROJECT_PATH/Gemfile" ]]; then
         echo "bundler"
+    elif [[ -f "$PROJECT_PATH/pom.xml" ]]; then
+        echo "maven"
+    elif [[ -f "$PROJECT_PATH/build.gradle" ]] || [[ -f "$PROJECT_PATH/build.gradle.kts" ]]; then
+        echo "gradle"
+    elif ls "$PROJECT_PATH"/*.csproj 1>/dev/null 2>&1 || ls "$PROJECT_PATH"/*.sln 1>/dev/null 2>&1; then
+        echo "dotnet"
     elif [[ -f "$PROJECT_PATH/go.mod" ]]; then
         echo "go"
     elif [[ -f "$PROJECT_PATH/Cargo.lock" ]] || [[ -f "$PROJECT_PATH/Cargo.toml" ]]; then
@@ -233,6 +239,70 @@ detect_package_manager() {
     else
         echo "null"
     fi
+}
+
+# --- All Package Managers Detection (polyglot support) ---
+
+detect_all_package_managers() {
+    local managers=()
+    local seen=()
+
+    add_pm() {
+        local pm="$1"
+        for s in "${seen[@]+"${seen[@]}"}"; do
+            [[ "$s" == "$pm" ]] && return
+        done
+        seen+=("$pm")
+        managers+=("$pm")
+    }
+
+    # JavaScript ecosystem
+    [[ -f "$PROJECT_PATH/pnpm-lock.yaml" ]] && add_pm "pnpm"
+    [[ -f "$PROJECT_PATH/yarn.lock" ]] && add_pm "yarn"
+    [[ -f "$PROJECT_PATH/package-lock.json" ]] && add_pm "npm"
+    [[ -f "$PROJECT_PATH/bun.lockb" ]] && add_pm "bun"
+    # Only add npm as fallback if package.json exists but no specific JS lock file
+    if [[ -f "$PROJECT_PATH/package.json" ]]; then
+        local has_js_pm=false
+        for s in "${seen[@]+"${seen[@]}"}"; do
+            case "$s" in pnpm|yarn|npm|bun) has_js_pm=true ;; esac
+        done
+        [[ "$has_js_pm" == "false" ]] && add_pm "npm"
+    fi
+
+    # Python ecosystem
+    if [[ -f "$PROJECT_PATH/Pipfile.lock" ]] || [[ -f "$PROJECT_PATH/Pipfile" ]]; then
+        add_pm "pipenv"
+    fi
+    if [[ -f "$PROJECT_PATH/poetry.lock" ]] || grep -q '\[tool.poetry\]' "$PROJECT_PATH/pyproject.toml" 2>/dev/null; then
+        add_pm "poetry"
+    fi
+    if [[ -f "$PROJECT_PATH/requirements.txt" ]] || [[ -f "$PROJECT_PATH/setup.py" ]] || [[ -f "$PROJECT_PATH/pyproject.toml" ]]; then
+        add_pm "pip"
+    fi
+
+    # PHP
+    { [[ -f "$PROJECT_PATH/composer.lock" ]] || [[ -f "$PROJECT_PATH/composer.json" ]]; } && add_pm "composer"
+
+    # Ruby
+    { [[ -f "$PROJECT_PATH/Gemfile.lock" ]] || [[ -f "$PROJECT_PATH/Gemfile" ]]; } && add_pm "bundler"
+
+    # JVM
+    [[ -f "$PROJECT_PATH/pom.xml" ]] && add_pm "maven"
+    { [[ -f "$PROJECT_PATH/build.gradle" ]] || [[ -f "$PROJECT_PATH/build.gradle.kts" ]]; } && add_pm "gradle"
+
+    # .NET
+    if ls "$PROJECT_PATH"/*.csproj 1>/dev/null 2>&1 || ls "$PROJECT_PATH"/*.sln 1>/dev/null 2>&1; then
+        add_pm "dotnet"
+    fi
+
+    # Go
+    [[ -f "$PROJECT_PATH/go.mod" ]] && add_pm "go"
+
+    # Rust
+    { [[ -f "$PROJECT_PATH/Cargo.lock" ]] || [[ -f "$PROJECT_PATH/Cargo.toml" ]]; } && add_pm "cargo"
+
+    json_array "${managers[@]+"${managers[@]}"}"
 }
 
 # --- Docker Detection ---
@@ -294,6 +364,7 @@ detect_entry_points() {
 detected_langs="$(detect_languages)"
 detected_fws="$(detect_frameworks)"
 pkg_manager="$(detect_package_manager)"
+all_pkg_managers="$(detect_all_package_managers)"
 has_dockerfile=$(detect_docker && echo "true" || echo "false")
 has_compose=$(detect_docker_compose && echo "true" || echo "false")
 detected_entries="$(detect_entry_points)"
@@ -302,6 +373,7 @@ printf '{\n'
 printf '  "languages": %s,\n' "$detected_langs"
 printf '  "frameworks": %s,\n' "$detected_fws"
 printf '  "package_manager": %s,\n' "$(if [[ "$pkg_manager" == "null" ]]; then echo "null"; else printf '"%s"' "$pkg_manager"; fi)"
+printf '  "all_package_managers": %s,\n' "$all_pkg_managers"
 printf '  "has_dockerfile": %s,\n' "$has_dockerfile"
 printf '  "has_docker_compose": %s,\n' "$has_compose"
 printf '  "entry_points": %s\n' "$detected_entries"

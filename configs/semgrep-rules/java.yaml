@@ -1,0 +1,293 @@
+rules:
+  # ---------------------------------------------------------------------------
+  # SQL Injection
+  # ---------------------------------------------------------------------------
+  - id: java-sql-injection
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $STMT.executeQuery("..." + $INPUT + "...")
+          - pattern: |
+              $STMT.execute("..." + $INPUT + "...")
+          - pattern: |
+              $STMT.executeUpdate("..." + $INPUT + "...")
+          - pattern: |
+              $CONN.prepareStatement("..." + $INPUT + "...")
+          - pattern: |
+              String.format("..." , $INPUT)
+    message: >
+      SQL query built with string concatenation. Use parameterized queries
+      with PreparedStatement and bind variables (e.g., ps.setString(1, input))
+      to prevent SQL injection.
+    severity: ERROR
+    languages: [java]
+    metadata:
+      cwe: ["CWE-89"]
+      owasp: ["A03:2021 Injection"]
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Command Injection
+  # ---------------------------------------------------------------------------
+  - id: java-command-injection
+    patterns:
+      - pattern-either:
+          - pattern: |
+              Runtime.getRuntime().exec($CMD)
+          - pattern: |
+              Runtime.getRuntime().exec($CMD, ...)
+          - pattern: |
+              new ProcessBuilder($CMD, ...)
+          - pattern: |
+              new ProcessBuilder(Arrays.asList($CMD, ...))
+      - metavariable-pattern:
+          metavariable: $CMD
+          patterns:
+            - pattern-not: "..."
+    message: >
+      Runtime.exec() or ProcessBuilder called with a potentially
+      user-controlled command. Validate and sanitize all input, use an
+      allowlist of permitted commands, and prefer ProcessBuilder with an
+      explicit argument array over a single command string.
+    severity: ERROR
+    languages: [java]
+    metadata:
+      cwe: ["CWE-78"]
+      owasp: ["A03:2021 Injection"]
+      confidence: HIGH
+      impact: CRITICAL
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Path Traversal
+  # ---------------------------------------------------------------------------
+  - id: java-path-traversal
+    patterns:
+      - pattern-either:
+          - pattern: |
+              new File($PATH)
+          - pattern: |
+              new File($BASE, $PATH)
+          - pattern: |
+              Paths.get($PATH)
+          - pattern: |
+              Path.of($PATH)
+          - pattern: |
+              $P.resolve($PATH)
+      - metavariable-pattern:
+          metavariable: $PATH
+          patterns:
+            - pattern-not: "..."
+    message: >
+      File or path operation with a potentially user-controlled path.
+      Canonicalize with getCanonicalPath() and verify the result stays
+      within the intended base directory to prevent path traversal attacks.
+    severity: WARNING
+    languages: [java]
+    metadata:
+      cwe: ["CWE-22"]
+      owasp: ["A01:2021 Broken Access Control"]
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # XXE — XML External Entity Injection
+  # ---------------------------------------------------------------------------
+  - id: java-xxe
+    patterns:
+      - pattern-either:
+          - pattern: |
+              DocumentBuilderFactory.newInstance()
+          - pattern: |
+              SAXParserFactory.newInstance()
+          - pattern: |
+              XMLInputFactory.newInstance()
+          - pattern: |
+              TransformerFactory.newInstance()
+    message: >
+      XML parser instantiated without disabling external entities. Set
+      the feature "http://apache.org/xml/features/disallow-doctype-decl"
+      to true, or disable FEATURE_EXTERNAL_GENERAL_ENTITIES and
+      FEATURE_EXTERNAL_PARAMETER_ENTITIES to prevent XXE attacks. For
+      XMLInputFactory, set IS_SUPPORTING_EXTERNAL_ENTITIES to false and
+      SUPPORT_DTD to false.
+    severity: ERROR
+    languages: [java]
+    metadata:
+      cwe: ["CWE-611"]
+      owasp: ["A05:2021 Security Misconfiguration"]
+      confidence: MEDIUM
+      impact: CRITICAL
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Insecure Deserialization
+  # ---------------------------------------------------------------------------
+  - id: java-insecure-deserialization
+    patterns:
+      - pattern-either:
+          - pattern: |
+              new ObjectInputStream(...)
+          - pattern: |
+              $OIS.readObject()
+          - pattern: |
+              $OIS.readUnshared()
+    message: >
+      ObjectInputStream.readObject() deserializes arbitrary Java objects
+      and can lead to remote code execution if the input is untrusted.
+      Use an allowlist-based ObjectInputFilter (Java 9+), or prefer
+      a safe format such as JSON with explicit type mapping.
+    severity: ERROR
+    languages: [java]
+    metadata:
+      cwe: ["CWE-502"]
+      owasp: ["A08:2021 Software and Data Integrity Failures"]
+      confidence: MEDIUM
+      impact: CRITICAL
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Hardcoded Credentials
+  # ---------------------------------------------------------------------------
+  - id: java-hardcoded-credentials
+    patterns:
+      - pattern-either:
+          - pattern: |
+              String $X = "...";
+          - pattern: |
+              final String $X = "...";
+          - pattern: |
+              static final String $X = "...";
+          - pattern: |
+              private static final String $X = "...";
+      - metavariable-regex:
+          metavariable: $X
+          regex: (?i)(password|passwd|secret|api_key|apikey|token|secret_key|secretkey|credentials)
+    message: >
+      Hardcoded credential detected in a string literal. Store secrets
+      in environment variables, a vault, or encrypted configuration
+      files — never in source code.
+    severity: ERROR
+    languages: [java]
+    metadata:
+      cwe: ["CWE-798"]
+      owasp: ["A07:2021 Identification and Authentication Failures"]
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Weak Cryptography
+  # ---------------------------------------------------------------------------
+  - id: java-weak-crypto
+    patterns:
+      - pattern-either:
+          - pattern: |
+              MessageDigest.getInstance("MD5")
+          - pattern: |
+              MessageDigest.getInstance("SHA-1")
+          - pattern: |
+              MessageDigest.getInstance("SHA1")
+    message: >
+      MD5 and SHA-1 are cryptographically broken and must not be used
+      for hashing passwords, digital signatures, or integrity checks.
+      Use SHA-256, SHA-512, or bcrypt/argon2/scrypt for passwords.
+    severity: WARNING
+    languages: [java]
+    metadata:
+      cwe: ["CWE-328"]
+      owasp: ["A02:2021 Cryptographic Failures"]
+      confidence: HIGH
+      impact: MEDIUM
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # SSRF — Server-Side Request Forgery
+  # ---------------------------------------------------------------------------
+  - id: java-ssrf
+    patterns:
+      - pattern-either:
+          - pattern: |
+              new URL($URL)
+          - pattern: |
+              new URL($URL).openConnection()
+          - pattern: |
+              new URL($URL).openStream()
+          - pattern: |
+              HttpURLConnection $CONN = (HttpURLConnection) new URL($URL).openConnection()
+          - pattern: |
+              URI.create($URL)
+      - metavariable-pattern:
+          metavariable: $URL
+          patterns:
+            - pattern-not: "..."
+    message: >
+      HTTP connection opened with a potentially user-controlled URL.
+      Validate the URL against an allowlist and block requests to
+      internal, private, or loopback IP ranges to prevent SSRF.
+    severity: WARNING
+    languages: [java]
+    metadata:
+      cwe: ["CWE-918"]
+      owasp: ["A10:2021 SSRF"]
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Open Redirect
+  # ---------------------------------------------------------------------------
+  - id: java-open-redirect
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $RESP.sendRedirect($URL)
+          - pattern: |
+              $RESP.setHeader("Location", $URL)
+          - pattern: |
+              $RESP.addHeader("Location", $URL)
+      - metavariable-pattern:
+          metavariable: $URL
+          patterns:
+            - pattern-not: "..."
+    message: >
+      Redirect with a potentially user-controlled URL may allow open
+      redirect attacks. Validate that the target is a relative path or
+      belongs to an allowlisted domain before redirecting.
+    severity: WARNING
+    languages: [java]
+    metadata:
+      cwe: ["CWE-601"]
+      owasp: ["A01:2021 Broken Access Control"]
+      confidence: MEDIUM
+      impact: MEDIUM
+      category: security
+
+  # ---------------------------------------------------------------------------
+  # Missing CSRF Protection (Spring)
+  # ---------------------------------------------------------------------------
+  - id: java-spring-csrf-disabled
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $HTTP.csrf().disable()
+          - pattern: |
+              $HTTP.csrf(AbstractHttpConfigurer::disable)
+          - pattern: |
+              $HTTP.csrf($C -> $C.disable())
+    message: >
+      CSRF protection is explicitly disabled in the Spring Security
+      configuration. Unless this is a stateless API using token-based
+      authentication (e.g., JWT in Authorization header), re-enable
+      CSRF protection to prevent cross-site request forgery attacks.
+    severity: WARNING
+    languages: [java]
+    metadata:
+      cwe: ["CWE-352"]
+      owasp: ["A01:2021 Broken Access Control"]
+      confidence: MEDIUM
+      impact: HIGH
+      category: security

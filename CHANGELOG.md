@@ -5,6 +5,29 @@ All notable changes to Shield will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-03-14
+
+### Added
+
+- **Go ecosystem support** — govulncheck for vulnerability audit, `go list -m -u` for outdated check, 10 custom Semgrep rules
+- **Ruby ecosystem support** — bundle-audit for vulnerability audit, `bundle outdated` for freshness check, 10 custom Semgrep rules
+- **Rust ecosystem support** — cargo-audit for vulnerability audit, cargo-outdated for freshness check, 8 custom Semgrep rules
+- **Java ecosystem support** — Maven and Gradle via OWASP dependency-check for audit, versions plugin for outdated, 10 custom Semgrep rules
+- **C#/.NET ecosystem support** — `dotnet list package --vulnerable` for audit, `--outdated` for freshness check
+- **Bun package manager support** — graceful fallback with guidance (no native audit/outdated commands)
+- **Polyglot project detection** — `detect-stack.sh` now outputs `all_package_managers` JSON array alongside the primary `package_manager` field
+- **Extended tool checks** — `check-prereqs.sh` now validates 15 tools (was 7): added govulncheck, bundle-audit, cargo-audit, cargo-outdated, trivy, dotnet, maven, gradle
+- **Extended installer** — `install.sh` now installs govulncheck, bundle-audit, cargo-audit, cargo-outdated and checks for dotnet, maven, gradle
+- **72 Semgrep rules** across 7 languages (was 62 across 6): added `java.yaml` with 10 rules
+
+### Fixed
+
+- `run-outdated.sh` wildcard fallback missing `security` key in summary JSON
+- `install.sh` banner showed `/shield full` instead of `/shield:shield full`
+- README "Planned" labels replaced with actual tool names for all implemented ecosystems
+- README Dependency Freshness table expanded from 5 to 11 ecosystems
+- README prerequisites table updated with all new tools
+
 ## [0.2.0] - 2026-03-14
 
 ### Added
@@ -59,6 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **189 unit tests** across 4 test suites (detect-stack, check-prereqs, consolidate, calculate-score)
 - 6 modes: full, quick, fix, verify, score, outdated
 
+[0.3.0]: https://github.com/alissonlinneker/shield-claude-skill/releases/tag/v0.3.0
 [0.2.0]: https://github.com/alissonlinneker/shield-claude-skill/releases/tag/v0.2.0
 [0.1.1]: https://github.com/alissonlinneker/shield-claude-skill/releases/tag/v0.1.1
 [0.1.0]: https://github.com/alissonlinneker/shield-claude-skill/releases/tag/v0.1.0
