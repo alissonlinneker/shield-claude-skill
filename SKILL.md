@@ -244,5 +244,5 @@ reasoning that tools cannot provide.
 - Complete fix code, not just diff hints
 - Adjusted risk score combining tool findings + manual analysis
 
-The Security Auditor skill lives at `skills/security-auditor/SKILL.md` and loads reference
+The Security Auditor skill lives at `skills/audit/SKILL.md` and loads reference
 files on demand to keep context lean.

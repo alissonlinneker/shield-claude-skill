@@ -244,6 +244,6 @@ reasoning that tools cannot provide.
 - Complete fix code, not just diff hints
 - Adjusted risk score combining tool findings + manual analysis
 
-The Security Auditor skill lives at `skills/security-auditor/SKILL.md` and loads
+The Security Auditor skill lives at `skills/audit/SKILL.md` and loads
 `references/owasp-top10.md`, `references/iac-checklist.md`, and `references/crypto-guidance.md`
 on demand — only the relevant reference file is loaded per analysis to keep context lean.

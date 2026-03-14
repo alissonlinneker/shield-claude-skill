@@ -1,5 +1,5 @@
 ---
-name: security-auditor
+name: audit
 description: >
   Intelligence-driven security analysis — the reasoning layer that complements Shield's
   tool-based scanning. Use this skill when the user says "analyze these findings",
